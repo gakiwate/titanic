@@ -222,7 +222,7 @@ def runTitanic(args):
             print i
 
 def verifyArgs(args):
-    if args.branch != 'all' and args.branch not in branchPaths:
+    if args.branch not in branchPaths:
         print 'error: unknown branch: %s' % (args.branch)
         sys.exit(1)
 
@@ -244,6 +244,8 @@ def setupArgsParser():
                         help='Platforms for which to retrieve results. You can specify more than one.')
     parser.add_argument('-d', action='store', dest='delta', default=1, type=int,
                         help='Range for which to retrieve results. Range in days.')
+    parser.add_argument('-r', action='store', dest='revision', default=0,
+                        help='Revision for which to start bisection with!')
     return parser.parse_args()
 
 
