@@ -14,6 +14,8 @@ branchPaths = {
     'fx-team'         : 'integration/fx-team'
 }
 
+platforms = ['linux32', 'linux64', 'osx10.6', 'osx10.7', 'osx10.8', 'winxp','win7','win764','win8']
+
 platformXRef = {
     'Linux'                            : 'linux32',
     'Ubuntu HW 12.04'                  : 'linux32',
@@ -146,18 +148,26 @@ def parseBuildInfo(buildInfo, branch):
     for p in platformXRef:
         if re.match(p, platform.strip()):
             return platformXRef[p], buildType, testType
+            #return platformXRef[p], buildType, testType
     return '','',''
 
 
 def getMatch(string, refList):
+
     # If the list is empty default to 'all' and return True.
     if (refList == []):
         return True
-    # Find partial matches between the string and elements in the List
-    # Return True or False depending on if you find a partial match
+
+    if string == '':
+        return False
+
     for item in refList:
-        if re.match(string.lower(), item.lower()) or re.match(item.lower(), string.lower()):
-            return True
+    # We need exact matches for test bisection. However, if we'd like to have more flexibility we
+    # could potentially use regular expresssions to look for matches.
+    #    if re.match(string.lower(), item.lower()) or re.match(item.lower(), string.lower()):
+    #        return True
+        if string == item:
+           return True
     return False
 
 
@@ -203,8 +213,38 @@ def getCSetResults(branch, getPlatforms, getTests, rev):
             notes = entry['notes'][0]['note'].replace("'", '')
 
         if getMatch(testType, getTests) and getMatch(platform, getPlatforms):
-            csetResults.append([result, platform, buildType, testType, notes])
+            csetResults.append([result, platform, buildType, testType, entry['buildername'], notes])
     return csetResults
+
+
+def runTitanicNormal(args, allPushes):
+    for push in allPushes:
+        print 'Getting Results for %s' % (push)
+        results = getCSetResults(args.branch, args.platform, args.tests, push)
+        # Mostly hooks would go in here. For now print all the results
+        for i in results:
+            print i
+
+def runTitanicAnalysis(args, allPushes):
+    if args.revision not in allPushes:
+        print 'Revision not found in the current range. Consider increasing range!'
+        sys.exit(1)
+
+    revPos = allPushes.index(args.revision)
+    print "Revision " + args.revision + " at position " + str(revPos)
+    for push in allPushes[revPos+1:]:
+        pushResults = getCSetResults(args.branch, args.platform, args.tests, push)
+        print pushResults
+        if (len(pushResults) > 0) and (pushResults[0][0] == 'success') and (pushResults[0][2] != ''):
+            revLastPos = allPushes.index(push)
+            return allPushes[revPos+1:revLastPos+1], pushResults[0][4]
+    print 'Revision that successfully passed ' + str(args.tests) + ' not found in the current range. Consider increasing range!'
+    sys.exit(1)
+
+
+def printCommands(revList, buildername, args):
+    for rev in revList:
+        print 'python trigger.py --buildername ' + str(buildername) + '--branch ' + str(args.branch) + ' --rev ' + str(rev)
 
 
 def runTitanic(args):
@@ -214,12 +254,14 @@ def runTitanic(args):
 
     allPushes = getPushLog(args.branch, startDate.strftime('%Y-%m-%d'))
     print allPushes
-    for push in allPushes:
-        print 'Getting Results for %s' % (push)
-        results = getCSetResults(args.branch, args.platform, args.tests, push)
-        # Mostly hooks would go in here. For now print all the results
-        for i in results:
-            print i
+
+    if args.revision:
+        # We might want to consider having an explicit flag for Analysis Mode
+        revList, buildername = runTitanicAnalysis(args, allPushes)
+        printCommands(revList, buildername, args)
+    else:
+        runTitanicNormal(args, allPushes)
+
 
 def verifyArgs(args):
     if args.branch not in branchPaths:
@@ -228,9 +270,17 @@ def verifyArgs(args):
 
     flag = True;
     for p in args.platform:
-        flag = flag and getMatch(p, platformXRef)
+        flag = flag and getMatch(p, platforms)
         if flag == False:
             print 'error: unknown platform: %s' % (p)
+            sys.exit(1)
+
+    if args.revision:
+        if args.tests == [] or (len(args.tests) != 1):
+            print 'For bisection in the cloud you need to specify test you are interested in!'
+            sys.exit(1)
+        elif args.platform == [] or (len(args.platform) != 1):
+            print 'To enable bisection in cloud you need to specify platform you are interested in!'
             sys.exit(1)
 
 
