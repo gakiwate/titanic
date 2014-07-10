@@ -147,7 +147,7 @@ def parseBuildInfo(buildInfo, branch):
 
     for p in platformXRef:
         if re.match(p, platform.strip()):
-            return platformXRef[p], buildType, testType
+            return p, buildType, testType
             #return platformXRef[p], buildType, testType
     return '','',''
 
@@ -238,14 +238,14 @@ def runTitanicAnalysis(args, allPushes):
             revLastPos = allPushes.index(push)
             if (pushResults[0][0] == 'success'):
                 print pushResults
-                return allPushes[revPos+1:revLastPos+1], pushResults[0][4]
+                return allPushes[revPos+1:revLastPos+1]
     print 'Revision that successfully passed ' + str(args.tests) + ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
 
-def printCommands(revList, buildername, args):
+def printCommands(revList, args):
     for rev in revList:
-        print 'python trigger.py --buildername "' + str(buildername) + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
+        print 'python trigger.py --buildername "' + str(args.buildername) + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
 
 
 def runTitanic(args):
@@ -265,8 +265,12 @@ def runTitanic(args):
 
     if args.revision:
         # We might want to consider having an explicit flag for Analysis Mode
-        revList, buildername = runTitanicAnalysis(args, allPushes)
-        printCommands(revList, buildername, args)
+        platform, buildType, test = parseBuildInfo(args.buildername, args.branch)
+        args.platform = [platform]
+        args.tests = [test]
+        args.buildType = buildType
+        revList = runTitanicAnalysis(args, allPushes)
+        printCommands(revList, args)
     else:
         runTitanicNormal(args, allPushes)
 
@@ -284,11 +288,11 @@ def verifyArgs(args):
             sys.exit(1)
 
     if args.revision:
-        if args.tests == [] or (len(args.tests) != 1):
-            print 'For bisection in the cloud you need to specify test you are interested in!'
+        if args.buildername == '':
+            print 'To enable bisection in cloud you need to specify the buildername!'
             sys.exit(1)
-        elif args.platform == [] or (len(args.platform) != 1):
-            print 'To enable bisection in cloud you need to specify platform you are interested in!'
+        if args.branch not in args.buildername:
+            print 'Please specify the branch you are interested in. Branch defaults to \'mozilla-central\''
             sys.exit(1)
 
 
@@ -306,6 +310,8 @@ def setupArgsParser():
                         help='Range for which to retrieve results. Range in days.')
     parser.add_argument('-r', action='store', dest='revision', default=0,
                         help='Revision for which to start bisection with!')
+    parser.add_argument('--bn', action='store', dest='buildername', default='',
+                        help='Buildername for which to run analysis.')
     return parser.parse_args()
 
 
