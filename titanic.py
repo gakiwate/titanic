@@ -238,7 +238,7 @@ def runTitanicAnalysis(args, allPushes):
             revLastPos = allPushes.index(push)
             if (pushResults[0][0] == 'success'):
                 print pushResults
-                return allPushes[revPos+1:revLastPos+1]
+                return allPushes[revPos+1:revLastPos]
     print 'Revision that successfully passed ' + str(args.tests) + ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
@@ -249,13 +249,6 @@ def printCommands(revList, args):
 
 
 def runTitanic(args):
-    # TODO
-    # Change the platform to take the actual platform instead of linux32 etc.
-    # Passing the buildername would greatly help as that would basically get rid
-    # of all the parameters passed as the 'test' and 'platform' would be specified in that.
-    # Further it makes sense to pass buildername info as considering the usage it would be
-    # more appropriate to pass that then tests and platform seperately
-
     # Default to a range of 1 day
     startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(args.delta*24))
     print startDate.strftime('%Y-%m-%d')
