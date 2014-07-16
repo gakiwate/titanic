@@ -157,9 +157,6 @@ def getMatch(string, refList):
     if (refList == []):
         return True
 
-    if string == '':
-        return False
-
     for item in refList:
     # We need exact matches for test bisection. However, if we'd like to have more flexibility we
     # could potentially use regular expresssions to look for matches.
@@ -224,26 +221,76 @@ def runTitanicNormal(args, allPushes):
         for i in results:
             print i
 
+
+def getPotentialPlatforms(builderInfo, branch):
+    platform, t, b = parseBuildInfo(builderInfo, branch)
+    basePlatform = platformXRef[platform]
+    potBuildP = [k for k, v in platformXRef.iteritems() if v == basePlatform]
+    return potBuildP
+
+
+def findIfBuilt(push, args):
+    # Possible BuilderName
+    # p, t, b = parseBuildInfo('Linux x86-64 mozilla-inbound build', args.branch)
+    # print p + " : " + t + " : " + b
+    # WINNT 5.2 : leak : build
+    # WINNT 5.2 : opt : pgo-build
+    # Linux x86-64 : opt : debug asan build
+    platforms = getPotentialPlatforms(args.buildername, args.branch)
+    if 'pgo' in args.buildername.lower():
+        results = getCSetResults(args.branch, platforms, ['opt'], ['pgo-build'], push)
+    elif 'asan' in args.buildername.lower() and platformXRef[args.platform[0]] == 'linux64':
+        # TODO: Replace platforms[0] with args.platform
+        results = getCSetResults(args.branch, platforms, ['opt'], ['asan build'], push)
+        # TODO: Figure out what to do with debug asan
+        # results = getCSetResults(args.branch, platforms, ['opt'], ['debug asan build'], push)
+    elif ' debug ' in args.buildername.lower():
+        results = getCSetResults(args.branch, platforms, ['leak'], ['build'], push)
+    else:
+        results = getCSetResults(args.branch, platforms, ['build'], [''], push)
+
+    if (results == []) or (results[0] != 'success'):
+        return False
+    return True
+
+
+def constructBuildName(args):
+    if 'pgo' in args.buildername.lower():
+        return args.platform[0] + ' ' + args.branch + ' ' + 'pgo-build'
+    if 'asan' in args.buildername.lower() and platformXRef[platforms[0]] == 'linux64':
+        return args.platform + ' ' + args.branch + ' ' + 'asan build'
+    # TODO: Figure out what to do with debug asan
+    if ' debug ' in args.buildername.lower():
+        return args.platform + ' ' + args.branch + ' ' + 'leak test build'
+
+
 def runTitanicAnalysis(args, allPushes):
     if args.revision not in allPushes:
         print 'Revision not found in the current range. Consider increasing range!'
         sys.exit(1)
 
+    unBuiltRevList = []
     revPos = allPushes.index(args.revision)
     print "Revision " + args.revision + " at position " + str(revPos)
     for push in allPushes[revPos+1:]:
         pushResults = getCSetResults(args.branch, args.platform, args.tests, args.buildType, push)
         print pushResults
-        if (len(pushResults) > 0) and (pushResults[0][2] != ''):
+
+        if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
-            if (pushResults[0][0] == 'success'):
-                print pushResults
-                return allPushes[revPos+1:revLastPos]
+            if (pushResults[0][0] == 'success') and (pushResults[0][2] != ''):
+                return allPushes[revPos+1:revLastPos], unBuiltRevList
+        if not findIfBuilt(push, args):
+            unBuiltRevList.append(push)
+
     print 'Revision that successfully passed ' + str(args.tests) + ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
 
-def printCommands(revList, args):
+def printCommands(revList, unBuiltRevList, args):
+    for rev in unBuiltRevList:
+        builderName = constructBuildName(args)
+        print 'python trigger.py --buildername "' + builderName + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
     for rev in revList:
         print 'python trigger.py --buildername "' + str(args.buildername) + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
 
@@ -262,8 +309,8 @@ def runTitanic(args):
         args.platform = [platform]
         args.tests = [test]
         args.buildType = buildType
-        revList = runTitanicAnalysis(args, allPushes)
-        printCommands(revList, args)
+        revList, unBuiltRevList = runTitanicAnalysis(args, allPushes)
+        printCommands(revList, unBuiltRevList, args)
     else:
         runTitanicNormal(args, allPushes)
 
