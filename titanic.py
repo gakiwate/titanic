@@ -6,6 +6,7 @@ import urllib
 import argparse
 import sys
 import datetime
+import bisect
 
 branchPaths = {
     'mozilla-central' : 'mozilla-central',
@@ -114,16 +115,23 @@ def getPushLog(branch, startDate):
     pushLogResponse = conn.getresponse()
 
     pushAll = []
+    entries = []
 
     pushLogJSON = pushLogResponse.read()
     pushLogResponse.close()
     pushLog = json.loads(pushLogJSON)
 
+    # For whatever reason the JSON Loads disturbs the ordering of the entries. The ordering
+    # of the entries is crucial since we consider it to be the chronological order of the
+    # revisions. Thus, we add a step so as to have the final revisions in chronological order
+    for entry in pushLog:
+        bisect.insort_left(entries, entry, 0, len(entries))
+
     # pushLog has a ID associated with each push. Each push also has a
     # date associated with it. For now we ignore the dates while considering the pushLogs.
     # Every push also has a set of revision numbers associated with it. We are interested
     # in the last of the revision numbers and only the first 12 characters.
-    for entry in pushLog:
+    for entry in entries:
         pushAll.insert(0, pushLog[entry]['changesets'][-1][:12])
 
     return pushAll
