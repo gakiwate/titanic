@@ -201,8 +201,6 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
 
     resultData = downloadCSetResults(branch, rev)
 
-    # TODO: Check for build corener cases
-
     for entry in resultData:
         notes = ''
         if 'result' not in entry:
@@ -248,7 +246,6 @@ def findIfBuilt(push, args):
     if 'pgo' in args.buildername.lower():
         results = getCSetResults(args.branch, platforms, ['opt'], ['pgo-build'], push)
     elif 'asan' in args.buildername.lower() and platformXRef[args.platform[0]] == 'linux64':
-        # TODO: Replace platforms[0] with args.platform
         results = getCSetResults(args.branch, platforms, ['opt'], ['asan build'], push)
         # TODO: Figure out what to do with debug asan
         # results = getCSetResults(args.branch, platforms, ['opt'], ['debug asan build'], push)
