@@ -232,6 +232,15 @@ def getPotentialPlatforms(builderInfo, branch):
     platform, t, b = parseBuildInfo(builderInfo, branch)
     basePlatform = platformXRef[platform]
     potBuildP = [k for k, v in platformXRef.iteritems() if v == basePlatform]
+
+    # For Windows and OSX the builds are all done on one platform and then 
+    # the tests are run on the actual desired platform.
+    if platformXRef[platform] == 'win7' or platformXRef[platform] == 'win8':
+        potBuildP.append('WINNT 5.2')
+        potBuildP.append('Windows XP 32-bit')
+    elif platformXRef[platform] == 'osx10.6' or platformXRef[platform] == 'osx10.8':
+        potBuildP.append('Rev4 MacOSX Lion 10.7')
+        potBuildP.append('OS X 10.7')
     return potBuildP
 
 
