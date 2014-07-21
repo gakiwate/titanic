@@ -219,11 +219,10 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
     return csetResults
 
 
-def runTitanicNormal(args, allPushes):
+def runTitanicNormal(runArgs, allPushes):
     for push in allPushes:
         print 'Getting Results for %s' % (push)
-        results = getCSetResults(args.branch, args.platform, args.tests, args.buildType, push)
-        # Mostly hooks would go in here. For now print all the results
+        results = getCSetResults(runArgs['branch'], runArgs['platform'], runArgs['tests'], runArgs['buildType'], push)
         for i in results:
             print i
 
@@ -244,102 +243,109 @@ def getPotentialPlatforms(builderInfo, branch):
     return potBuildP
 
 
-def findIfBuilt(push, args):
+def findIfBuilt(push, runArgs):
     # Possible BuilderName
     # p, t, b = parseBuildInfo('Linux x86-64 mozilla-inbound build', args.branch)
     # print p + " : " + t + " : " + b
     # WINNT 5.2 : leak : build
     # WINNT 5.2 : opt : pgo-build
     # Linux x86-64 : opt : debug asan build
-    platforms = getPotentialPlatforms(args.buildername, args.branch)
-    if 'pgo' in args.buildername.lower():
-        results = getCSetResults(args.branch, platforms, ['opt'], ['pgo-build'], push)
-    elif 'asan' in args.buildername.lower() and platformXRef[args.platform[0]] == 'linux64':
-        results = getCSetResults(args.branch, platforms, ['opt'], ['asan build'], push)
+    platforms = getPotentialPlatforms(runArgs['buildername'], runArgs['branch'])
+    if 'pgo' in runArgs['buildername'].lower():
+        results = getCSetResults(runArgs['branch'], platforms, ['opt'], ['pgo-build'], push)
+    elif 'asan' in runArgs['buildername'].lower() and platformXRef[runArgs['platform'][0]] == 'linux64':
+        results = getCSetResults(runArgs['branch'], platforms, ['opt'], ['asan build'], push)
         # TODO: Figure out what to do with debug asan
         # results = getCSetResults(args.branch, platforms, ['opt'], ['debug asan build'], push)
-    elif ' debug ' in args.buildername.lower():
-        results = getCSetResults(args.branch, platforms, ['leak'], ['build'], push)
+    elif ' debug ' in runArgs['buildername'].lower():
+        results = getCSetResults(runArgs['branch'], platforms, ['leak'], ['build'], push)
     else:
-        results = getCSetResults(args.branch, platforms, ['build'], [''], push)
+        results = getCSetResults(runArgs['branch'], platforms, ['build'], [''], push)
 
     if (results == []) or (results[0] != 'success'):
         return False
     return True
 
 
-def constructBuildName(args):
-    if 'pgo' in args.buildername.lower():
-        return args.platform[0] + ' ' + args.branch + ' ' + 'pgo-build'
-    if 'asan' in args.buildername.lower() and platformXRef[platforms[0]] == 'linux64':
-        return args.platform + ' ' + args.branch + ' ' + 'asan build'
+def constructBuildName(runArgs):
+    if 'pgo' in runArgs['buildername'].lower():
+        return runArgs['platform'][0] + ' ' + runArgs['branch']+ ' ' + 'pgo-build'
+    if 'asan' in runArgs['buildername'].lower() and platformXRef[platforms[0]] == 'linux64':
+        return runArgs['platform']+ ' ' + runArgs['branch']+ ' ' + 'asan build'
     # TODO: Figure out what to do with debug asan
-    if ' debug ' in args.buildername.lower():
-        return args.platform + ' ' + args.branch + ' ' + 'leak test build'
+    if ' debug ' in runArgs['buildername'].lower():
+        return runArgs['platform']+ ' ' + runArgs['branch']+ ' ' + 'leak test build'
 
 
-def runTitanicAnalysis(args, allPushes):
-    if args.revision not in allPushes:
+def runTitanicAnalysis(runArgs, allPushes):
+    if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range. Consider increasing range!'
         sys.exit(1)
 
     unBuiltRevList = []
-    revPos = allPushes.index(args.revision)
-    # print "Revision " + args.revision + " at position " + str(revPos)
+    revPos = allPushes.index(runArgs['revision'])
+    #print "Revision " + args.revision + " at position " + str(revPos)
     for push in allPushes[revPos+1:]:
-        pushResults = getCSetResults(args.branch, args.platform, args.tests, args.buildType, push)
+        pushResults = getCSetResults(runArgs['branch'], runArgs['platform'], runArgs['tests'], runArgs['buildType'], push)
         # print pushResults
 
         if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
             if (pushResults[0][0] == 'success') and (pushResults[0][2] != ''):
                 return allPushes[revPos+1:revLastPos], unBuiltRevList
-        if not findIfBuilt(push, args):
+        if not findIfBuilt(push, runArgs):
             unBuiltRevList.append(push)
 
-    print 'Revision that successfully passed ' + str(args.tests) + ' not found in the current range. Consider increasing range!'
+    print 'Revision that successfully passed ' + str(runArgs['tests']) + ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
 
-def printCommands(revList, unBuiltRevList, args):
+def printCommands(revList, unBuiltRevList, runArgs):
     for rev in unBuiltRevList:
-        builderName = constructBuildName(args)
-        print 'python trigger.py --buildername "' + builderName + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
+        builderName = constructBuildName(runArgs)
+        print 'python trigger.py --buildername "' + builderName + '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
     for rev in revList:
-        print 'python trigger.py --buildername "' + str(args.buildername) + '" --branch ' + str(args.branch) + ' --rev ' + str(rev)
+        print 'python trigger.py --buildername "' + str(runArgs['buildername']) + '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
 
 
-def runTitanic(args):
+def runTitanic(runArgs):
     # Default to a range of 1 day
-    startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(args.delta*24))
+    startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(runArgs['delta']*24))
     # print startDate.strftime('%Y-%m-%d')
 
-    allPushes = getPushLog(args.branch, startDate.strftime('%Y-%m-%d'))
+    allPushes = getPushLog(runArgs['branch'], startDate.strftime('%Y-%m-%d'))
     # print allPushes
 
-    if args.revision:
-        # We might want to consider having an explicit flag for Analysis Mode
-        platform, buildType, test = parseBuildInfo(args.buildername, args.branch)
-        args.platform = [platform]
-        args.tests = [test]
-        args.buildType = buildType
-        revList, unBuiltRevList = runTitanicAnalysis(args, allPushes)
-        printCommands(revList, unBuiltRevList, args)
+    if runArgs['revision']:
+        revList, unBuiltRevList = runTitanicAnalysis(runArgs, allPushes)
+        printCommands(revList, unBuiltRevList, runArgs)
     else:
-        runTitanicNormal(args, allPushes)
+        runTitanicNormal(runArgs, allPushes)
 
 
 def verifyArgs(args):
+    runArgs = {
+        'branch': 'mozilla-central',
+        'platform': [],
+        'tests': [],
+        'revision': 0,
+        'buildType': 'opt',
+        'delta': args.delta,
+        'buildername': ''
+    }
+
     if args.branch not in branchPaths:
         print 'error: unknown branch: %s' % (args.branch)
         sys.exit(1)
+    runArgs['branch'] = args.branch
 
-    flag = True;
+    flag = True
     for p in args.platform:
         flag = flag and getMatch(p, platforms)
         if flag == False:
             print 'error: unknown platform: %s' % (p)
             sys.exit(1)
+    runArgs['platform'] = args.platform
 
     if args.revision:
         if args.buildername == '':
@@ -348,6 +354,14 @@ def verifyArgs(args):
         if args.branch not in args.buildername:
             print 'Please specify the branch you are interested in. Branch defaults to \'mozilla-central\''
             sys.exit(1)
+        platform, buildType, test = parseBuildInfo(args.buildername, args.branch)
+
+        runArgs['revision'] = args.revision
+        runArgs['buildername'] = args.buildername
+        runArgs['platform'] = [platform]
+        runArgs['tests'] = [test]
+        runArgs['buildType'] = buildType
+    return runArgs
 
 
 def setupArgsParser():
@@ -371,5 +385,5 @@ def setupArgsParser():
 
 if __name__ == '__main__':
     args = setupArgsParser()
-    verifyArgs(args)
-    runTitanic(args)
+    runArgs = verifyArgs(args)
+    runTitanic(runArgs)
