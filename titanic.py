@@ -285,10 +285,10 @@ def runTitanicAnalysis(args, allPushes):
 
     unBuiltRevList = []
     revPos = allPushes.index(args.revision)
-    print "Revision " + args.revision + " at position " + str(revPos)
+    # print "Revision " + args.revision + " at position " + str(revPos)
     for push in allPushes[revPos+1:]:
         pushResults = getCSetResults(args.branch, args.platform, args.tests, args.buildType, push)
-        print pushResults
+        # print pushResults
 
         if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
@@ -312,10 +312,10 @@ def printCommands(revList, unBuiltRevList, args):
 def runTitanic(args):
     # Default to a range of 1 day
     startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(args.delta*24))
-    print startDate.strftime('%Y-%m-%d')
+    # print startDate.strftime('%Y-%m-%d')
 
     allPushes = getPushLog(args.branch, startDate.strftime('%Y-%m-%d'))
-    print allPushes
+    # print allPushes
 
     if args.revision:
         # We might want to consider having an explicit flag for Analysis Mode
