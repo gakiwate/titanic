@@ -323,21 +323,36 @@ def runTitanic(runArgs):
         runTitanicNormal(runArgs, allPushes)
 
 
-def verifyArgs(args):
+def populateArgs(branch, buildername, revision, delta):
+    if buildername == '':
+        print 'To enable bisection in cloud you need to specify the buildername!'
+        sys.exit(1)
+    if branch not in buildername:
+        print 'Please specify the branch you are interested in. Branch defaults to \'mozilla-central\''
+        sys.exit(1)
+
     runArgs = {
-        'branch': 'mozilla-central',
+        'branch': branch,
+        'revision': revision,
+        'delta': delta,
+        'buildername': buildername,
         'platform': [],
         'tests': [],
-        'revision': 0,
-        'buildType': 'opt',
-        'delta': args.delta,
-        'buildername': ''
+        'buildType': ''
     }
 
+    platform, buildType, test = parseBuildInfo(buildername, branch)
+
+    runArgs['platform'] = [platform]
+    runArgs['tests'] = [test]
+    runArgs['buildType'] = buildType
+
+    return runArgs
+
+def verifyArgs(args):
     if args.branch not in branchPaths:
         print 'error: unknown branch: %s' % (args.branch)
         sys.exit(1)
-    runArgs['branch'] = args.branch
 
     flag = True
     for p in args.platform:
@@ -345,24 +360,21 @@ def verifyArgs(args):
         if flag == False:
             print 'error: unknown platform: %s' % (p)
             sys.exit(1)
-    runArgs['platform'] = args.platform
+
+    runArgs = {
+        'branch': args.branch,
+        'platform': args.platform,
+        'tests': args.tests,
+        'revision': args.revision,
+        'buildType': args.buildType,
+        'delta': args.delta,
+        'buildername': args.buildername
+    }
 
     if args.revision:
-        if args.buildername == '':
-            print 'To enable bisection in cloud you need to specify the buildername!'
-            sys.exit(1)
-        if args.branch not in args.buildername:
-            print 'Please specify the branch you are interested in. Branch defaults to \'mozilla-central\''
-            sys.exit(1)
-        platform, buildType, test = parseBuildInfo(args.buildername, args.branch)
+        return populateArgs(args.branch, args.buildername, args.revision, args.delta)
 
-        runArgs['revision'] = args.revision
-        runArgs['buildername'] = args.buildername
-        runArgs['platform'] = [platform]
-        runArgs['tests'] = [test]
-        runArgs['buildType'] = buildType
     return runArgs
-
 
 def setupArgsParser():
     parser = argparse.ArgumentParser(description='Run Titanic')
