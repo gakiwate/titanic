@@ -394,6 +394,11 @@ def setupArgsParser():
                         help='Buildername for which to run analysis.')
     return parser.parse_args()
 
+def runAnalysis(branch, buildername, revision, delta):
+    runArgs = populateArgs(branch, buildername, revision, delta):
+    startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(runArgs['delta']*24))
+    allPushes = getPushLog(runArgs['branch'], startDate.strftime('%Y-%m-%d'))
+    return runTitanicAnalysis(runArgs)
 
 if __name__ == '__main__':
     args = setupArgsParser()
