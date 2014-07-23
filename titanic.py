@@ -7,6 +7,7 @@ import argparse
 import sys
 import datetime
 import bisect
+import requests
 
 branchPaths = {
     'mozilla-central' : 'mozilla-central',
@@ -395,10 +396,19 @@ def setupArgsParser():
     return parser.parse_args()
 
 def runAnalysis(branch, buildername, revision, delta):
-    runArgs = populateArgs(branch, buildername, revision, delta):
+    runArgs = populateArgs(branch, buildername, revision, delta)
     startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(runArgs['delta']*24))
     allPushes = getPushLog(runArgs['branch'], startDate.strftime('%Y-%m-%d'))
     return runTitanicAnalysis(runArgs)
+
+def getBuildCommands(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    buildName = constructBuildName(runArgs)
+    return 'python trigger.py --buildername "' + buildName + '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(revision)
+
+def getTriggerCommands(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    return 'python trigger.py --buildername "' + buildername + '" --branch ' + branch + ' --rev ' + str(revision)
 
 if __name__ == '__main__':
     args = setupArgsParser()
