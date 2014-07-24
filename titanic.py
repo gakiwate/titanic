@@ -410,6 +410,20 @@ def getTriggerCommands(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     return 'python trigger.py --buildername "' + buildername + '" --branch ' + branch + ' --rev ' + str(revision)
 
+def triggerBuild(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    buildName = constructBuildName(runArgs)
+    return triggerJob(branch, buildName, revision)
+
+def triggerJob(branch, buildername, revision):
+    payload = {}
+    payload['properties'] = json.dumps({"branch": branch, "revision": revision})
+
+    url = r'''https://secure.pub.build.mozilla.org/buildapi/self-serve/%s/builders/%s/%s''' % \
+            (branch, buildname, revision)
+    r = requests.post(url, data=payload)
+    return r.status_code
+
 if __name__ == '__main__':
     args = setupArgsParser()
     runArgs = verifyArgs(args)
