@@ -20,7 +20,10 @@ if a build needs to be done for the revision and platform in question.
 
 #Installation and Usage
 
-To run titanic you don't need to install any additional packages except Python.
+You'll need to install the Python 'requests' package
+
+You can do this by running the following command after you have installed 'pip'
+    pip install requests
 
 To use titanic in analysis mode, you need to run the following command
     python titanic.py -r [revision] -b [branch] --bn [buildername] -d [range]
