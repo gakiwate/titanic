@@ -399,7 +399,7 @@ def runAnalysis(branch, buildername, revision, delta):
     runArgs = populateArgs(branch, buildername, revision, delta)
     startDate = datetime.datetime.utcnow() - datetime.timedelta(hours=(runArgs['delta']*24))
     allPushes = getPushLog(runArgs['branch'], startDate.strftime('%Y-%m-%d'))
-    return runTitanicAnalysis(runArgs)
+    return runTitanicAnalysis(runArgs, allPushes)
 
 def getBuildCommands(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
