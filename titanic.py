@@ -437,6 +437,12 @@ def setupArgsParser():
     return parser.parse_args()
 
 
+# API: runAnalysis
+# ARGUMENTS: branch, buildername, revision, delta
+# RETURN: revList, buildList
+#     revList : List of revisions that we need to retrigger the job.
+#     buildList: List of revisions that we need to build before we
+#         trigger the job.
 def runAnalysis(branch, buildername, revision, delta):
     runArgs = populateArgs(branch, buildername, revision, delta)
     startDate = datetime.datetime.utcnow() - \
@@ -445,6 +451,15 @@ def runAnalysis(branch, buildername, revision, delta):
     return runTitanicAnalysis(runArgs, allPushes)
 
 
+# API: getBuildCommands
+# ARGUMENTS: branch, buildername, revision
+# RETURN: Command (string) that can be executed
+#     The command will be a string that can be run on the terminal
+# NOTE: You need to specify the buildername for test you would like to run.
+# For example, 'Windows XP 32-bit mozilla-inbound pgo talos svgr' is
+# a buildername that can be supplied.
+# Based on this getBuildCommands will revrt back with the appropriate
+# buildCommand that could be run
 def getBuildCommands(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
@@ -452,18 +467,33 @@ def getBuildCommands(branch, buildername, revision):
         + str(runArgs['branch']) + ' --rev ' + str(revision)
 
 
+# API: getTriggerCommands
+# ARGUMENTS: branch, buildername, revision
+# RETURN: Command (string) that can be executed
+#     The command will be a string that can be run on the terminal
 def getTriggerCommands(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     return 'python trigger.py --buildername "' + buildername + '" --branch ' \
         + branch + ' --rev ' + str(revision)
 
 
+# API: triggerBuild
+# ARGUMENTS: branch, buildername, revision
+# RETURN: status code
+# NOTE: You need to specify the buildername for test you would like to run.
+# For example, 'Windows XP 32-bit mozilla-inbound pgo talos svgr' is
+# a buildername that can be supplied.
+# Based on this triggerBuild will trigger off an appropriate build which
+# will allow you to run the test once the build is complete
 def triggerBuild(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
     return triggerJob(branch, buildName, revision)
 
 
+# API: triggerJob
+# ARGUMENTS: branch, buildername, revision
+# RETURN: status code
 def triggerJob(branch, buildername, revision):
     payload = {}
     payload['properties'] = json.dumps(
