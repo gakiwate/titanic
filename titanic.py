@@ -500,7 +500,7 @@ def triggerJob(branch, buildername, revision):
         {"branch": branch, "revision": revision})
 
     url = r'''https://secure.pub.build.mozilla.org/buildapi/self-serve/%s/builders/%s/%s''' % (
-        branch, buildname, revision)
+        branch, buildername, revision)
     r = requests.post(url, data=payload)
     return r.status_code
 
