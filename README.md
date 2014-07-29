@@ -73,6 +73,7 @@ ARGUMENTS: branch, buildername, revision, delta
 RETURN: revList, buildList
 revList: List of revisions for which we need to retrigger the job.
 buildList: List of revisions that we need to build before we trigger the job.
+NOTE: Argument 'delta' is optional and will default to 7 if not provided.
 
     titanic.runAnalysis(branch, buildername, revision, delta)
 

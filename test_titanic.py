@@ -9,6 +9,11 @@ delta = 30
 revList, buildList = titanic.runAnalysis(
     branch, buildername, 'ceff7d54080f', delta)
 
+# NOTE: runAnalysis argument 'delta' is optional.  If not provided, it will default to 7.
+# See example below:
+# revList, buildList = titanic.runAnalysis(
+#     branch, buildername, 'ceff7d54080f')	
+	
 for buildRev in buildList:
     print titanic.getBuildCommands(branch, buildername, buildRev)
 

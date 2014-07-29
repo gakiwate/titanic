@@ -443,7 +443,8 @@ def setupArgsParser():
 #     revList : List of revisions that we need to retrigger the job.
 #     buildList: List of revisions that we need to build before we
 #         trigger the job.
-def runAnalysis(branch, buildername, revision, delta):
+# NOTE: Argument 'delta' is optional and will default to 7 if not provided.
+def runAnalysis(branch, buildername, revision, delta=7):
     runArgs = populateArgs(branch, buildername, revision, delta)
     startDate = datetime.datetime.utcnow() - \
         datetime.timedelta(hours=(runArgs['delta']*24))
