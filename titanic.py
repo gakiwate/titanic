@@ -291,16 +291,25 @@ def findIfBuilt(push, runArgs):
 
 
 def constructBuildName(runArgs):
+    if platformXRef[runArgs['platform'][0]] == 'linux32':
+        platform = 'Linux'
+    elif platformXRef[runArgs['platform'][0]] == 'linux64':
+        platform = 'Linux x86-64'
+    elif platformXRef[runArgs['platform'][0]] == 'winxp' or 'win7' or 'win8':
+        platform = 'WINNT 5.2'
+    else:
+        platform = platformXRef[runArgs['platform'][0]]
+
     if 'pgo' in runArgs['buildername'].lower():
-        return runArgs['platform'][0] + ' ' + \
+        return platform + ' ' + \
             runArgs['branch'] + ' ' + 'pgo-build'
     if 'asan' in runArgs['buildername'].lower() and \
-            platformXRef[platforms[0]] == 'linux64':
-        return runArgs['platform'] + ' ' + runArgs['branch'] + \
+            platformXRef[runArgs['platform'][0]] == 'linux64':
+        return platform + ' ' + runArgs['branch'] + \
             ' ' + 'asan build'
     # TODO: Figure out what to do with debug asan
     if ' debug ' in runArgs['buildername'].lower():
-        return runArgs['platform'] + ' ' + runArgs['branch'] + \
+        return platform + ' ' + runArgs['branch'] + \
             ' ' + 'leak test build'
 
 
