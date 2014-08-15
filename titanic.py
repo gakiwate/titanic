@@ -105,8 +105,15 @@ b2g_mozilla-central_helix_periodic opt
 b2g_mozilla-central_wasabi_periodic opt
 '''
 
-
+# getPushLog looks at the input branch and returns a list of all revisions, in
+# chronological order, that have been committed since the input start date.
+# This list is used to find all revisions that come after the revision that
+# caused the failure and that need to be investigated.
 def getPushLog(branch, startDate):
+    """Looks at input branch and returns a list of all revisions
+	committed since the input start date, sorted chronologically
+	by commit date.
+	"""
     # Example
     # Get PushLog for 2014-06-16
     # https://hg.mozilla.org/integration/mozilla-inbound/json-pushes?startdate=2014-06-18
@@ -143,8 +150,18 @@ def getPushLog(branch, startDate):
 
     return pushAll
 
-
+# parseBuildInfo takes input string, buildInfo (buildername), and breaks
+# it down into separate strings by platform, build type, and test type.
+# Input, branch, is used only to remove the branch from the buildername.
+# The buildername is broken down into separate strings so they can be
+# used as inputs for other functions.
+# Example:
+# Input: parseBuildInfo('Windows XP 32-bit mozilla-inbound pgo talos svgr', 'mozilla-inbound')
+# Output: ('Windows XP 32-bit', 'opt', 'talos svgr')
 def parseBuildInfo(buildInfo, branch):
+    """Splits string buildername by branch to return strings platform,
+    build type, and test type.
+    """
     buildInfoList = buildInfo.split(" " + branch + " ")
     platform = buildInfoList[0]
     buildType = branch.join(buildInfoList[1:])
@@ -162,8 +179,10 @@ def parseBuildInfo(buildInfo, branch):
             return p, buildType, testType
     return '', '', ''
 
-
+# getMatch takes an input string and list.  The function returns True
+# if the string is in the list or if the list is empty.
 def getMatch(string, refList):
+    """Returns true if refList is empty list or input string is in refList."""
     # If the list is empty default to 'all' and return True.
     if (refList == []):
         return True
@@ -178,8 +197,12 @@ def getMatch(string, refList):
             return True
     return False
 
-
+# downloadCSetResults takes input strings, branch and revision, and
+# downloads all test results for the given revision.
 def downloadCSetResults(branch, rev):
+    """Downloads all test results for input revision on input branch.
+	Returns dictionary containing test results.
+	"""
     # Example
     # Get Results for CSet Revision: 3b75b48cbaca
     # https://tbpl.mozilla.org/php/getRevisionBuilds.php?branch=mozilla-inbound&rev=3b75b48cbaca
@@ -200,8 +223,12 @@ def downloadCSetResults(branch, rev):
         ret = {}
     return ret
 
-
+# getCSetReults downloads the test results for the revision and
+# saves them in a list.
 def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
+    """Downloads test results dictionary, converts it into a list,
+	and returns that list.
+	"""
     csetResults = []
 
     resultData = downloadCSetResults(branch, rev)
@@ -229,8 +256,13 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
                 testType, entry['buildername'], notes])
     return csetResults
 
-
+# runTitanicNormal prints the test results for all revisions
+# that were committed starting 'delta' days before the 
+# current time.
 def runTitanicNormal(runArgs, allPushes):
+    """Prints the test results for all revisions that were
+	committed starting 'delta' days before the current time.
+	"""
     for push in allPushes:
         print 'Getting Results for %s' % (push)
         results = getCSetResults(
@@ -239,8 +271,16 @@ def runTitanicNormal(runArgs, allPushes):
         for i in results:
             print i
 
-
+# getPotentialPlatforms returns a list of all platforms that the input,
+# buildInfo, could have been built on.  First the base platform is
+# found by looking in platformXRef, then a list of all potential platforms
+# is created by finding all platforms in platformXRef that share the same
+# base platform.
 def getPotentialPlatforms(builderInfo, branch):
+    """Splits buildername to find platform.  Looks in platformXRef to find
+	platform's base platform.  Loops though platform XRef to find all platforms
+	that share the same base platform and returns a list of those platforms.
+	"""
     platform, t, b = parseBuildInfo(builderInfo, branch)
     basePlatform = platformXRef[platform]
     potBuildP = [k for k, v in platformXRef.iteritems() if v == basePlatform]
@@ -257,8 +297,13 @@ def getPotentialPlatforms(builderInfo, branch):
 
     return potBuildP
 
-
+# findIfBuilt determines whether input push has been built already
+# by getting all test results for the push.  If there are no results
+# or the result was not a success, findIfBuilt returns False.
 def findIfBuilt(push, runArgs):
+    """Gets test results for push.  If there are no results or the
+	result was not a success, returns False.
+	"""
     # Possible BuilderName
     # p, t, b = parseBuildInfo(
     #   'Linux x86-64 mozilla-inbound build', args.branch)
@@ -289,8 +334,14 @@ def findIfBuilt(push, runArgs):
         return False
     return True
 
-
+# constructBuildName takes input dictionary, runArgs, that contains
+# information on a build and finds relevant info (platform, branch,
+# build type) to return a string, buildername, for use in other
+# functions.
 def constructBuildName(runArgs):
+    """Finds relevant info in runArgs dictionary and combines it
+	into one string, buildername, which it then returns.
+	"""
     if platformXRef[runArgs['platform'][0]] == 'linux32':
         platform = 'Linux'
     elif platformXRef[runArgs['platform'][0]] == 'linux64':
@@ -312,8 +363,22 @@ def constructBuildName(runArgs):
         return platform + ' ' + runArgs['branch'] + \
             ' ' + 'leak test build'
 
-
+# runTitanicAnalysis checks if revision argument is found within the
+# specified date range.  If it is not found, runTitanicAnalysis will give
+# an error.  Otherwise, runTitanicAnalysis will get test results for each revision
+# that comes after the input revision chronologically.  If there are test results,
+# the test result is a success, and the revision has a build associated with it,
+# runTitanicAnalysis will return.  The outputs of runTitanicAnalysis are two lists;
+# a list of all revisions that come after the input revision, up to the
+# revision that caused runTitanicAnalysis to return, and a subset of the first list
+# that contains all revisions that have no build associated with them.
 def runTitanicAnalysis(runArgs, allPushes):
+    """Loops through all revisions committed after the input revision
+	until it finds a revision with 'success' test results and a build
+	associated with it.  Returns two lists; one containing all revisions
+	that were seen before the 'success' revision, the other containing all revisions in the 
+	first list that have not been built yet.
+	"""
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
         print 'Consider increasing range!'
@@ -338,8 +403,12 @@ def runTitanicAnalysis(runArgs, allPushes):
         ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
-
+# printCommands prints command line arguments that can be input
+# when running titanic.
 def printCommands(revList, unBuiltRevList, runArgs):
+    """Prints command line arguments that can be input when 
+	running titanic.
+	"""
     for rev in unBuiltRevList:
         builderName = constructBuildName(runArgs)
         print 'python trigger.py --buildername "' + builderName + \
@@ -348,8 +417,18 @@ def printCommands(revList, unBuiltRevList, runArgs):
         print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
             '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
 
-
+# runTitanic finds all revisions on the input branch that were committed
+# starting 'delta' days ago.  If a revision was given as an argument to
+# titanic, runTitanic will print command line arguments that can then be
+# run for each revision that needs to be investigated.  If no revision
+# was given, runTitanic will print test results for all revisions committed
+# starting 'delta' days ago.
 def runTitanic(runArgs):
+    """Checks if a revision was input into titanic.  If so, prints potential
+	command line arguments that can be run for each revision that was committed
+	after the input revision.  Otherwise, prints test results for all revisions
+	committed in the specified date range.
+	""" 
     # Default to a range of 1 day
     startDate = datetime.datetime.utcnow() - \
         datetime.timedelta(hours=(runArgs['delta']*24))
@@ -363,8 +442,16 @@ def runTitanic(runArgs):
     else:
         runTitanicNormal(runArgs, allPushes)
 
-
+# populateArgs enters input data (branch, buildername, revision, delta) 
+# into dictionary (runArgs).  populateArgs also breaks buildername into
+# platform, test, and build type, then adds that data to runArgs.  
+# runArgs will give an error if the buildername is blank or the
+# branch is not in the buildername.
 def populateArgs(branch, buildername, revision, delta):
+    """Splits buildername into platform, build type, and test.  Then
+	enters those 3 parameters, along with all other arguments into
+	dictionary, runArgs, and returns it.
+	"""
     if buildername == '':
         print 'You need to specify the buildername!'
         sys.exit(1)
@@ -391,8 +478,14 @@ def populateArgs(branch, buildername, revision, delta):
 
     return runArgs
 
-
+# verifyArgs confirms whether or not the titanic arguments are valid before running.
+# If the branch or platform is unknown, verifyArgs will give an error.  Otherwise,
+# a dictionary, runArgs, is populated with the verified input data and is returned.
 def verifyArgs(args):
+    """Confirms whether or not input branch and platforms are valid.  If not, 
+	prints an error message and exits.  Otherwise populates a dictionary with input
+	data and returns it.
+	"""
     if args.branch not in branchPaths:
         print 'error: unknown branch: %s' % (args.branch)
         sys.exit(1)
@@ -420,8 +513,10 @@ def verifyArgs(args):
 
     return runArgs
 
-
+# setupArgsParser creates the command line arguments that are valid
+# when running titanic.
 def setupArgsParser():
+    """Defines what command line arguments titanic can accept."""
     parser = argparse.ArgumentParser(description='Run Titanic')
     parser.add_argument(
         '-b', action='store', dest='branch', default='mozilla-central',
