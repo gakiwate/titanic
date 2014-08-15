@@ -184,17 +184,11 @@ def parseBuildInfo(buildInfo, branch):
 def getMatch(string, refList):
     """Returns true if refList is empty list or input string is in refList."""
     # If the list is empty default to 'all' and return True.
-    if (refList == []):
-        return True
-
-    for item in refList:
+    if not refList or string in refList:
+    	return True
         # We need exact matches for test bisection.
         # However, if we'd like to have more flexibility we
         # could potentially use regular expresssions to look for matches.
-        # if re.match(string.lower(), item.lower()):
-        #    return True
-        if string == item:
-            return True
     return False
 
 # downloadCSetResults takes input strings, branch and revision, and
@@ -452,7 +446,7 @@ def populateArgs(branch, buildername, revision, delta):
 	enters those 3 parameters, along with all other arguments into
 	dictionary, runArgs, and returns it.
 	"""
-    if buildername == '':
+    if not buildername:
         print 'You need to specify the buildername!'
         sys.exit(1)
     if branch not in buildername:
@@ -460,21 +454,17 @@ def populateArgs(branch, buildername, revision, delta):
         print 'Branch defaults to \'mozilla-central\''
         sys.exit(1)
 
+    platform, buildType, test = parseBuildInfo(buildername, branch)
+
     runArgs = {
         'branch': branch,
         'revision': revision,
         'delta': delta,
         'buildername': buildername,
-        'platform': [],
-        'tests': [],
-        'buildType': ''
+        'platform': [platform],
+        'tests': [test],
+        'buildType': buildType
     }
-
-    platform, buildType, test = parseBuildInfo(buildername, branch)
-
-    runArgs['platform'] = [platform]
-    runArgs['tests'] = [test]
-    runArgs['buildType'] = buildType
 
     return runArgs
 
@@ -490,28 +480,14 @@ def verifyArgs(args):
         print 'error: unknown branch: %s' % (args.branch)
         sys.exit(1)
 
-    flag = True
     for p in args.platform:
-        flag = flag and getMatch(p, platforms)
-        if flag is False:
+        if p not in platforms:
             print 'error: unknown platform: %s' % (p)
             sys.exit(1)
 
-    runArgs = {
-        'branch': args.branch,
-        'platform': args.platform,
-        'tests': args.tests,
-        'revision': args.revision,
-        'buildType': args.buildType,
-        'delta': args.delta,
-        'buildername': args.buildername
-    }
+    return populateArgs(
+        args.branch, args.buildername, args.revision, args.delta)
 
-    if args.revision:
-        return populateArgs(
-            args.branch, args.buildername, args.revision, args.delta)
-
-    return runArgs
 
 # setupArgsParser creates the command line arguments that are valid
 # when running titanic.
