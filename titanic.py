@@ -312,6 +312,8 @@ def constructBuildName(runArgs):
         return platform + ' ' + runArgs['branch'] + \
             ' ' + 'leak test build'
 
+    return platform + ' ' + runArgs['branch'] + \
+            ' ' + 'build'
 
 def runTitanicAnalysis(runArgs, allPushes):
     if runArgs['revision'] not in allPushes:
