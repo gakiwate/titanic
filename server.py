@@ -32,7 +32,7 @@ def json_response(func):
     return wrapper
 
 
-def create_db_connection(database='backfill.sqlite'):
+def create_db_connection(database='backfill-db.sqlite'):
     if os.path.exists(database):
         try:
             connection = sqlite3.connect(database)
@@ -53,6 +53,8 @@ def create_db_connection(database='backfill.sqlite'):
                                 "revision text, "
                                 "branch text, "
                                 "buildername text, "
+                                "buildrevs text, "
+                                "analyzerevs text, "
                                 "status text"
                                 ")"
                                 )
@@ -67,7 +69,7 @@ def run_query(where_clause):
     db = create_db_connection()
     cursor = db.cursor()
 
-    fields = ['id', 'dateadded', 'datefinished', 'revision', 'branch', 'buildername', 'status']
+    fields = ['id', 'dateadded', 'datefinished', 'revision', 'branch', 'buildername', 'status', 'buildrevs', 'analyzerevs']
     sql = """select %s from jobs %s;""" % (', '.join(fields), where_clause)
     print sql
     cursor.execute(sql)
@@ -99,6 +101,7 @@ def add_new_request():
         rev = request.form['revision']
         branch = request.form['branch']
         bn = request.form['buildername']
+
     ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     sql = "insert into jobs (dateadded, revision, branch, buildername, status) values ('%s', '%s', '%s', '%s', 'new');" % (ts, rev, branch, bn)
     print sql
@@ -129,6 +132,30 @@ def root():
 def static_proxy(path):
     # send_static_file will guess the correct MIME type
     return app.send_static_file(os.path.join('js', path))
+
+@app.route("/update_status", methods=['POST'])
+@json_response
+def run_updatestatus_data():
+    data = request.get_json()
+    sql = """update jobs set status='%s' where id=%s;""" % (data['status'], data['id'])
+    db = create_db_connection()
+    cursor = db.cursor()
+    cursor.execute(sql)
+    db.commit()
+    #TODO: verify via return value in alerts
+    return data
+
+@app.route("/update", methods=['POST'])
+@json_response
+def run_submit_data():
+    retVal = {}
+    data = request.get_json()
+    sql = """update jobs set buildrevs='%s',analyzerevs='%s' where id=%s;""" % (data['buildrevs'], data['analyzerevs'], data['id'])
+    db = create_db_connection()
+    cursor = db.cursor()
+    cursor.execute(sql)
+    db.commit()
+    return data
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
