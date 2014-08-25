@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script src="js/jquery.js"></script>
+</head>
+<body>
+<script>
+  var root_url = window.location.protocol + '//' + window.location.host;
+  $.getJSON(root_url + "/active_jobs", function (data) {
+    var jobtable = "<table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
+    var job;
+    for (var j in data['jobs']) {
+        job = data['jobs'][j];
+        jobtable += "<tr><td>" + job.branch + "</td>";
+        jobtable += "<td>" + job.revision + "</td>";
+        jobtable += "<td>" + job.buildername + "</td>";
+        jobtable += "<td>" + job.status + "</td></tr>";
+    }
+    jobtable += "</table>";
+    $('#jobtable').html(jobtable);
+  });
+</script>
+<div id="addnew">
+<form method="post" action="/new_request">
+Submit a new backfill job<br />
+<table>
+ <tr><td>branch</td><td>
+  <select name="branch">
+    <option name='mozilla-inbound'>Mozilla-Inbound</option>
+    <option name='fx-team'>FX-Team</option>
+    <option name='mozilla-central'>Mozilla-Central</option>
+    <option name='Try'>Try</option>
+  </select>
+ </td></tr>
+ <tr><td>Revision:</td><td><input type="text" size="12" name="revision"></td></tr>
+ <tr><td>Buildername:</td><td><input type="text" size="48" name="buildername"></td></tr>
+ <tr><td></td><td><input type="submit" name="submit"></td></tr>
+</table>
+</form>
+<p>
+<hr>
+<br />
+</div>
+<div id="info"></div>
+<div id="jobtable"></div>
+</body>
+</html>
