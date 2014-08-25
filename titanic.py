@@ -168,12 +168,16 @@ def getMatch(string, refList):
     if (refList == []):
         return True
 
+    if (string == '') and (refList == ['']):
+        return True
+
     for item in refList:
         # We need exact matches for test bisection.
         # However, if we'd like to have more flexibility we
         # could potentially use regular expresssions to look for matches.
         # if re.match(string.lower(), item.lower()):
         #    return True
+
         if string == item:
             return True
     return False
@@ -201,6 +205,40 @@ def downloadCSetResults(branch, rev):
     return ret
 
 
+def getBuildLoc(logLoc):
+    return logLoc.rsplit('/', 1)[0]
+
+
+def getCSetResultsBuild(branch, getPlatforms, getTests, getBuildType, rev):
+    csetResults = []
+
+    resultData = downloadCSetResults(branch, rev)
+
+    for entry in resultData:
+        notes = ''
+        if 'result' not in entry:
+            continue
+
+        result = entry['result']
+        platform, testType, buildType = parseBuildInfo(
+            entry['buildername'], branch)
+
+        if not platform:
+            continue
+        if entry['notes']:
+            notes = entry['notes'][0]['note'].replace("'", '')
+
+        if getMatch(testType, getTests) and getMatch(
+            platform, getPlatforms) and getMatch(
+                buildType, getBuildType):
+
+            buildLoc = getBuildLoc(entry['log'])
+            csetResults.append([
+                result, platform, buildType,
+                testType, entry['buildername'], buildLoc, notes])
+    return csetResults
+
+
 def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
     csetResults = []
 
@@ -224,9 +262,10 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
             platform, getPlatforms) and getMatch(
                 buildType, [getBuildType]):
 
+            buildLoc = getBuildLoc(entry['log'])
             csetResults.append([
                 result, platform, buildType,
-                testType, entry['buildername'], notes])
+                testType, entry['buildername'], buildLoc, notes])
     return csetResults
 
 
@@ -258,7 +297,7 @@ def getPotentialPlatforms(builderInfo, branch):
     return potBuildP
 
 
-def findIfBuilt(push, runArgs):
+def findBuildStatus(push, runArgs, statusType):
     # Possible BuilderName
     # p, t, b = parseBuildInfo(
     #   'Linux x86-64 mozilla-inbound build', args.branch)
@@ -269,25 +308,25 @@ def findIfBuilt(push, runArgs):
     platforms = getPotentialPlatforms(
         runArgs['buildername'], runArgs['branch'])
     if 'pgo' in runArgs['buildername'].lower():
-        results = getCSetResults(
+        results = getCSetResultsBuild(
             runArgs['branch'], platforms, ['opt'], ['pgo-build'], push)
     elif 'asan' in runArgs['buildername'].lower() and \
             platformXRef[runArgs['platform'][0]] == 'linux64':
-        results = getCSetResults(
+        results = getCSetResultsBuild(
             runArgs['branch'], platforms, ['opt'], ['asan build'], push)
         # TODO: Figure out what to do with debug asan
         # results = getCSetResults(
         # args.branch, platforms, ['opt'], ['debug asan build'], push)
     elif ' debug ' in runArgs['buildername'].lower():
-        results = getCSetResults(
+        results = getCSetResultsBuild(
             runArgs['branch'], platforms, ['leak'], ['build'], push)
     else:
-        results = getCSetResults(
+        results = getCSetResultsBuild(
             runArgs['branch'], platforms, ['build'], [''], push)
 
-    if (results == []) or (results[0] != 'success'):
-        return False
-    return True
+    if (results == []) or (results[0][0] != statusType):
+        return [False, None]
+    return [True, results[0]]
 
 
 def constructBuildName(runArgs):
@@ -313,7 +352,8 @@ def constructBuildName(runArgs):
             ' ' + 'leak test build'
 
     return platform + ' ' + runArgs['branch'] + \
-            ' ' + 'build'
+        ' ' + 'build'
+
 
 def runTitanicAnalysis(runArgs, allPushes):
     if runArgs['revision'] not in allPushes:
@@ -327,13 +367,12 @@ def runTitanicAnalysis(runArgs, allPushes):
         pushResults = getCSetResults(
             runArgs['branch'], runArgs['platform'],
             runArgs['tests'], runArgs['buildType'], push)
-        # print pushResults
 
         if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
             if (pushResults[0][0] == 'success') and (pushResults[0][2] != ''):
                 return allPushes[revPos+1:revLastPos], unBuiltRevList
-        if not findIfBuilt(push, runArgs):
+        if not findBuildStatus(push, runArgs, 'success')[0]:
             unBuiltRevList.append(push)
 
     print 'Revision that successfully passed ' + str(runArgs['tests']) + \
@@ -346,9 +385,21 @@ def printCommands(revList, unBuiltRevList, runArgs):
         builderName = constructBuildName(runArgs)
         print 'python trigger.py --buildername "' + builderName + \
             '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
+
+    if unBuiltRevList != []:
+        print 'Trigger Builds. Wait for all builds to complete before proceeding...'
+        sys.exit(1)
+
     for rev in revList:
-        print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
-            '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
+        if 'talos' in runArgs['buildername']:
+            print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
+                '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
+                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision'])
+        else:
+            print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
+                '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
+                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision']) + \
+                ' --file ' + getTestsZipLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision'])
 
 
 def runTitanic(runArgs):
@@ -448,6 +499,96 @@ def setupArgsParser():
     return parser.parse_args()
 
 
+# Can be sped up by http://requests-cache.readthedocs.org/en/latest/user_guide.html
+def taskStatus(branch, buildername, revision, statusType):
+    url = ('https://secure.pub.build.mozilla.org/builddata/buildjson/builds-%s.js') % (statusType)
+    r = requests.get(url)
+    tasks = json.loads(r.text)
+
+    if branch not in tasks[statusType]:
+        return False
+
+    if revision not in tasks[statusType][branch]:
+        return False
+
+    for task in tasks[statusType][branch][revision]:
+        if task['buildername'] == buildername:
+            return True
+
+    return False
+
+
+def isBuildPending(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    buildName = constructBuildName(runArgs)
+    return isJobPending(branch, buildName, revision)
+
+
+def isBuildRunning(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    buildName = constructBuildName(runArgs)
+    return isJobRunning(branch, buildName, revision)
+
+
+def isJobPending(branch, buildername, revision):
+    return taskStatus(branch, buildername, revision, 'pending')
+
+
+def isJobRunning(branch, buildername, revision):
+    return taskStatus(branch, buildername, revision, 'running')
+
+
+def isBuildSuccessful(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    return findBuildStatus(revision, runArgs, 'success')[0]
+
+
+def findBuildLocation(branch, buildername, revision):
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    status, result = findBuildStatus(revision, runArgs, 'success')
+    if not status:
+        print 'Please make sure that there is a build...'
+        sys.exit(1)
+
+    return result[5]
+
+
+def getBuildInfo(branch, buildername, revision):
+    version = '34.0a1'
+
+    runArgs = populateArgs(branch, buildername, revision, 1)
+    ftp = findBuildLocation(branch, buildername, revision)
+
+    if platformXRef[runArgs['platform'][0]] == 'winxp' or 'win7':
+        extension = 'zip'
+        platform = 'win32'
+    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or 'osx10.7' or 'osx10.8':
+        extension = 'dmg'
+        platform = 'mac'
+        if runArgs['buildType'] == 'debug':
+            platform = 'mac64'
+    elif platformXRef[runArgs['platform'][0]] == 'linux32':
+        extension = 'tar.bz2'
+        platform = 'linux-i686'
+    elif platformXRef[runArgs['platform'][0]] == 'linux64':
+        extension = 'tar.bz2'
+        platform = 'linux-x86_64'
+
+    return ftp, version, platform, extension
+
+
+def getInstallerLoc(branch, buildername, revision):
+    ftp, version, platform, extension = getBuildInfo(branch, buildername, revision)
+    buildLoc = "%s/firefox-%s.en-US.%s.%s" % (ftp, version, platform, extension)
+    return buildLoc
+
+
+def getTestsZipLoc(branch, buildername, revision):
+    ftp, version, platform, extension = getBuildInfo(branch, buildername, revision)
+    testLoc = "%s/firefox-%s.en-US.%s.tests.zip" % (ftp, version, platform)
+    return testLoc
+
+
 # API: runAnalysis
 # ARGUMENTS: branch, buildername, revision, delta
 # RETURN: revList, buildList
@@ -500,22 +641,41 @@ def getTriggerCommands(branch, buildername, revision):
 def triggerBuild(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
-    return triggerJob(branch, buildName, revision)
+    payload = {}
+    payload['properties'] = json.dumps(
+        {"branch": branch, "revision": revision})
+    return triggerTask(branch, buildName, revision, payload)
 
 
-# API: triggerJob
-# ARGUMENTS: branch, buildername, revision
-# RETURN: status code
+# TODO: FIXME: Make it work for different types of jobs
 def triggerJob(branch, buildername, revision):
+    files = []
     payload = {}
     payload['properties'] = json.dumps(
         {"branch": branch, "revision": revision})
 
+    files.append(getInstallerLoc(branch, buildername, revision))
+    if 'talos' not in buildername:
+        files.append(getTestsZipLoc(branch, buildername, revision))
+    payload['files'] = json.dumps(files)
+
+    return triggerTask(branch, buildername, revision, payload)
+
+
+# API: triggerTask
+# ARGUMENTS: branch, buildername, revision
+# RETURN: status code
+def triggerTask(branch, buildername, revision, payload):
+
     url = r'''https://secure.pub.build.mozilla.org/buildapi/self-serve/%s/builders/%s/%s''' % (
         branch, buildername, revision)
     r = requests.post(url, data=payload)
-    return r.status_code
+    if 400 <= int(r.status_code) < 500:
+        print 'The task could not be triggered.'
+        return r.status_code
 
+    print 'Your return code is: %s' % r.status_code
+    print 'https://secure.pub.build.mozilla.org/buildapi/revision/%s/%s' % (branch, revision)
 
 if __name__ == '__main__':
     args = setupArgsParser()
