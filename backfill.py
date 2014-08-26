@@ -13,6 +13,8 @@ Status
 '''
 
 server = 'http://0.0.0.0:8159/'
+auth = None
+# auth = (<username>@mozilla.com, <password>)
 
 def updateJob(jobID, branch, buildername, revision, delta=7):
     revList, buildList = titanic.runAnalysis(
@@ -53,7 +55,7 @@ def processJob(job):
             buildList = job['buildrevs'].split(',')
             for rev in buildList:
                 print rev
-                titanic.triggerBuild(job['branch'], job['buildername'], rev)
+                titanic.triggerBuild(job['branch'], job['buildername'], rev, auth)
         updateStatus(job['id'], 'building')
         print 'Building for Job...'
 
@@ -62,12 +64,12 @@ def processJob(job):
         buildFlag = 1
         revList = job['analyzerevs'].split(',')
         for rev in revList:
-            if (titanic.isBuildPending(job['branch'], job['buildername'], rev) \
-                    or titanic.isBuildRunning(job['branch'], job['buildername'], rev)):
+            if (titanic.isBuildPending(job['branch'], job['buildername'], rev, auth) \
+                    or titanic.isBuildRunning(job['branch'], job['buildername'], rev, auth)):
                 buildFlag = 0
                 continue
 
-            elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev):
+            elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev, auth):
                 print 'Error: For ' + rev + ' ' + job['buildername']
                 updateStatus(job['id'], 'error')
                 buildFlag = 0
@@ -76,9 +78,9 @@ def processJob(job):
         if buildFlag:
             print 'Builds are done!'
             for rev in revList:
-                titanic.triggerJob(job['branch'], job['buildername'], rev)
-                if not (titanic.isJobPending(job['branch'], job['buildername'], rev) \
-                        or titanic.isJobRunning(job['branch'], job['buildername'], rev)):
+                titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
+                if not (titanic.isJobPending(job['branch'], job['buildername'], rev, auth) \
+                        or titanic.isJobRunning(job['branch'], job['buildername'], rev, auth)):
                     updateStatus(job['id'], 'error')
 
                 updateStatus(job['id'], 'running')
@@ -89,8 +91,8 @@ def processJob(job):
         doneFlag = 1
         revList = job['analyzerevs'].split(',')
         for rev in revList:
-            if (titanic.isJobPending(job['branch'], job['buildername'], rev) \
-                    or titanic.isJobRunning(job['branch'], job['buildername'], rev)):
+            if (titanic.isJobPending(job['branch'], job['buildername'], rev, auth) \
+                    or titanic.isJobRunning(job['branch'], job['buildername'], rev, auth)):
                 doneFlag = 0
 
         if doneFlag:

@@ -514,7 +514,7 @@ def setupArgsParser():
 
 
 # Can be sped up by http://requests-cache.readthedocs.org/en/latest/user_guide.html
-def taskStatus(branch, buildername, revision, statusType):
+def taskStatus(branch, buildername, revision, statusType, auth = None):
     url = ('https://secure.pub.build.mozilla.org/builddata/buildjson/builds-%s.js') % (statusType)
     r = requests.get(url)
 
@@ -540,24 +540,24 @@ def taskStatus(branch, buildername, revision, statusType):
     return False
 
 
-def isBuildPending(branch, buildername, revision):
+def isBuildPending(branch, buildername, revision, auth = None):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
-    return isJobPending(branch, buildName, revision)
+    return isJobPending(branch, buildName, revision, auth)
 
 
-def isBuildRunning(branch, buildername, revision):
+def isBuildRunning(branch, buildername, revision, auth = None):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
-    return isJobRunning(branch, buildName, revision)
+    return isJobRunning(branch, buildName, revision, auth)
 
 
-def isJobPending(branch, buildername, revision):
-    return taskStatus(branch, buildername, revision, 'pending')
+def isJobPending(branch, buildername, revision, auth = None):
+    return taskStatus(branch, buildername, revision, 'pending', auth)
 
 
-def isJobRunning(branch, buildername, revision):
-    return taskStatus(branch, buildername, revision, 'running')
+def isJobRunning(branch, buildername, revision, auth = None):
+    return taskStatus(branch, buildername, revision, 'running', auth)
 
 
 def isBuildSuccessful(branch, buildername, revision):
@@ -660,17 +660,16 @@ def getTriggerCommands(branch, buildername, revision):
 # a buildername that can be supplied.
 # Based on this triggerBuild will trigger off an appropriate build which
 # will allow you to run the test once the build is complete
-def triggerBuild(branch, buildername, revision):
+def triggerBuild(branch, buildername, revision, auth = None):
     runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
     payload = {}
     payload['properties'] = json.dumps(
         {"branch": branch, "revision": revision})
-    return triggerTask(branch, buildName, revision, payload)
+    return triggerTask(branch, buildName, revision, payload, auth)
 
 
-# TODO: FIXME: Make it work for different types of jobs
-def triggerJob(branch, buildername, revision):
+def triggerJob(branch, buildername, revision, auth = None):
     files = []
     payload = {}
     payload['properties'] = json.dumps(
@@ -680,18 +679,17 @@ def triggerJob(branch, buildername, revision):
     if 'talos' not in buildername:
         files.append(getTestsZipLoc(branch, buildername, revision))
     payload['files'] = json.dumps(files)
-
-    return triggerTask(branch, buildername, revision, payload)
+    return triggerTask(branch, buildername, revision, payload, auth)
 
 
 # API: triggerTask
 # ARGUMENTS: branch, buildername, revision
 # RETURN: status code
-def triggerTask(branch, buildername, revision, payload):
+def triggerTask(branch, buildername, revision, payload, auth = None):
 
     url = r'''https://secure.pub.build.mozilla.org/buildapi/self-serve/%s/builders/%s/%s''' % (
         branch, buildername, revision)
-    r = requests.post(url, data=payload)
+    r = requests.post(url, data=payload, auth=auth)
     if 400 <= int(r.status_code) < 500:
         print 'The task could not be triggered.'
         return r.status_code
