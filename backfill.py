@@ -12,9 +12,9 @@ Status
     done
 '''
 
-server = 'http://0.0.0.0:8159/'
+server = 'http://0.0.0.0:8314/'
 auth = None
-# auth = (<username>@mozilla.com, <password>)
+# auth = ('<username>@mozilla.com', '<password>')
 
 def updateJob(jobID, branch, buildername, revision, delta=7):
     revList, buildList = titanic.runAnalysis(

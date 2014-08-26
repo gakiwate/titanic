@@ -159,5 +159,5 @@ def run_submit_data():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    app.run(host="0.0.0.0", port=8159)
+    app.run(host="0.0.0.0", port=8314)
 
