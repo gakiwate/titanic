@@ -69,7 +69,7 @@ def processJob(job):
                 buildFlag = 0
                 continue
 
-            elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev, auth):
+            elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev):
                 print 'Error: For ' + rev + ' ' + job['buildername']
                 updateStatus(job['id'], 'error')
                 buildFlag = 0
