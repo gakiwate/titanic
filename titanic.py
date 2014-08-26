@@ -394,12 +394,12 @@ def printCommands(revList, unBuiltRevList, runArgs):
         if 'talos' in runArgs['buildername']:
             print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
                 '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
-                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision'])
+                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], rev)
         else:
             print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
                 '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
-                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision']) + \
-                ' --file ' + getTestsZipLoc(runArgs['branch'], runArgs['buildername'], runArgs['revision'])
+                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], rev) + \
+                ' --file ' + getTestsZipLoc(runArgs['branch'], runArgs['buildername'], rev)
 
 
 def runTitanic(runArgs):
@@ -554,7 +554,7 @@ def findBuildLocation(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     status, result = findBuildStatus(revision, runArgs, 'success')
     if not status:
-        print 'Please make sure that there is a build...'
+        print 'Please make sure that there is a build for revision: ' + revision
         sys.exit(1)
 
     return result[5]
