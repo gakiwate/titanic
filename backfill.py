@@ -12,19 +12,13 @@ Status
     done
 '''
 
-server = 'http://0.0.0.0:8314/'
+server = 'http://54.215.155.53:8314/'
 auth = None
 # auth = ('<username>@mozilla.com', '<password>')
 
 def updateJob(jobID, branch, buildername, revision, delta=7):
     revList, buildList = titanic.runAnalysis(
         branch, buildername, revision, delta)
-
-    print revList
-    print buildList
-
-    if not (revList or buildList):
-        return 401
 
     buildRevs = ','.join(buildList)
     revs = ','.join(revList)
@@ -51,6 +45,10 @@ def processJob(job):
         print 'Updated Job...'
 
     if job['status'] == 'updated':
+        if (job['buildrevs'] == '') and (job['analyzerevs'] == ''):
+            updateStatus(job['id'], 'done')
+            return
+
         if not (job['buildrevs'] == ''):
             buildList = job['buildrevs'].split(',')
             for rev in buildList:
