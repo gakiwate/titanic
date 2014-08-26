@@ -12,6 +12,8 @@ Status
     done
 '''
 
+# Optinally you can direct it to your own local server
+# server = 'http://0.0.0.0:8314/'
 server = 'http://54.215.155.53:8314/'
 auth = None
 # auth = ('<username>@mozilla.com', '<password>')
@@ -77,12 +79,8 @@ def processJob(job):
             print 'Builds are done!'
             for rev in revList:
                 titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
-                if not (titanic.isJobPending(job['branch'], job['buildername'], rev, auth) \
-                        or titanic.isJobRunning(job['branch'], job['buildername'], rev, auth)):
-                    updateStatus(job['id'], 'error')
-                    continue
 
-                updateStatus(job['id'], 'running')
+            updateStatus(job['id'], 'running')
             print 'Running Jobs...'
 
 
