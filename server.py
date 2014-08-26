@@ -10,7 +10,7 @@ from functools import wraps
 import logging
 import sqlite3
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder='static')
 
 def serialize_to_json(object):
     """Serialize class objects to json"""
@@ -124,15 +124,6 @@ def new_request():
 def get_jobs():
     return {'jobs': run_query("where status!='done'")}
 
-@app.route('/')
-def root():
-    return app.send_static_file('jobs.html')
-
-@app.route('/js/<path:path>')
-def static_proxy(path):
-    # send_static_file will guess the correct MIME type
-    return app.send_static_file(os.path.join('js', path))
-
 @app.route("/update_status", methods=['POST'])
 @json_response
 def run_updatestatus_data():
@@ -159,5 +150,16 @@ def run_submit_data():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
+
+    @app.route('/')
+    def root():
+        return app.send_static_file('jobs.html')
+
+    @app.route('/js/<path:path>')
+    def static_proxy(path):
+        # send_static_file will guess the correct MIME type
+        return app.send_static_file(os.path.join('js', path))
+
+
     app.run(host="0.0.0.0", port=8159)
 
