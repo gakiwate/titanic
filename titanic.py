@@ -682,6 +682,13 @@ def triggerTask(branch, buildername, revision, payload, auth = None):
     print 'Your return code is: %s' % r.status_code
     print 'https://secure.pub.build.mozilla.org/buildapi/revision/%s/%s' % (branch, revision)
 
+# server = '54.215.155.53:8314/'
+def startBackfill(branch, buildername, revision, server):
+    data = {'branch': branch, 'buildername': buildername, 'revision': revision}
+    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+    r = requests.post(server + 'new_request', data=json.dumps(data), headers=headers)
+    return r.status_code
+
 if __name__ == '__main__':
     args = setupArgsParser()
     runArgs = verifyArgs(args)
