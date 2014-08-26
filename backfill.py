@@ -77,7 +77,11 @@ def processJob(job):
             print 'Builds are done!'
             for rev in revList:
                 titanic.triggerJob(job['branch'], job['buildername'], rev)
-            updateStatus(job['id'], 'running')
+                if not (titanic.isJobPending(job['branch'], job['buildername'], rev) \
+                        or titanic.isJobRunning(job['branch'], job['buildername'], rev)):
+                    updateStatus(job['id'], 'error')
+
+                updateStatus(job['id'], 'running')
             print 'Running Jobs...'
 
 
@@ -100,4 +104,5 @@ def processCron():
         processJob(job)
 
 # Schedule backfill.py to run every few minutes!
-processCron()
+if __name__ == '__main__':
+    processCron()
