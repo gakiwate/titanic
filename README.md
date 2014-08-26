@@ -23,10 +23,16 @@ if a build needs to be done for the revision and platform in question.
 You'll need to install the Python 'requests' package
 
 You can do this by running the following command after you have installed 'pip'
+
     pip install requests
 
 To use titanic in analysis mode, you need to run the following command
+
     python titanic.py -r [revision] -b [branch] --bn [buildername] -d [range]
+
+If you want to use the Server module you will need to install flask
+
+    pip install flask
 
 #Standalone Usage
 
@@ -39,6 +45,20 @@ To use titanic in analysis mode, you need to run the following command
     Platform: Ubuntu HW 12.04
     Build Type: pgo
     Test: talos other
+
+#Trigger Usage
+
+To make use of the trigger you should add the following line in ~/.netrc
+
+    machine secure.pub.build.mozilla.org login <email> password <password>
+
+In case you don't want to do that you can manually enter the LDAP username and password when prompted!
+
+## Common Issues
+
+If you get a return code of 401 it most probably means that you have supplied
+
+    Status Code: 401 -- Wrong username and password
 
 #Titanic as a Library
 Titanic can also be used as a library. To use as a library you can simply import titanic and use one of the APIs listed below as per the needs.
