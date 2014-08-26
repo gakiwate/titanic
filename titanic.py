@@ -413,21 +413,10 @@ def runTitanic(runArgs):
     if runArgs['revision']:
         revList, unBuiltRevList = runTitanicAnalysis(runArgs, allPushes)
         printCommands(revList, unBuiltRevList, runArgs)
-        if runArgs['auto'] and (revList or unBuiltRevList):
-            postToServer(runArgs)
     else:
         runTitanicNormal(runArgs, allPushes)
 
-def postToServer(runArgs):
-    server = "http://54.215.155.53:8180/new_request"
-#    server = "http://localhost:8159/new_request"
-    data = {'branch': runArgs['branch'], 'revision': runArgs['revision'], 'buildername': runArgs['buildername']}
-    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-    print "going to post data to server: %s" % data
-    r = requests.post(server, data=json.dumps(data), headers=headers)
-    print "posted to server! %s" % r
-
-def populateArgs(branch, buildername, revision, delta, auto=False):
+def populateArgs(branch, buildername, revision, delta):
     if buildername == '':
         print 'You need to specify the buildername!'
         sys.exit(1)
@@ -444,7 +433,6 @@ def populateArgs(branch, buildername, revision, delta, auto=False):
         'platform': [],
         'tests': [],
         'buildType': '',
-        'auto': auto
     }
 
     platform, buildType, test = parseBuildInfo(buildername, branch)
@@ -476,12 +464,11 @@ def verifyArgs(args):
         'buildType': args.buildType,
         'delta': args.delta,
         'buildername': args.buildername,
-        'auto': args.auto
     }
 
     if args.revision:
         return populateArgs(
-            args.branch, args.buildername, args.revision, args.delta, args.auto)
+            args.branch, args.buildername, args.revision, args.delta)
 
     return runArgs
 
@@ -508,8 +495,6 @@ def setupArgsParser():
                         help='Revision for which to start bisection with!')
     parser.add_argument('--bn', action='store', dest='buildername', default='',
                         help='Buildername for which to run analysis.')
-    parser.add_argument('-a', action='store_true', dest='auto', default=False,
-                        help='Upload job to server for managing builds/jobs')
     return parser.parse_args()
 
 
