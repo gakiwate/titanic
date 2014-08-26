@@ -632,10 +632,15 @@ def getBuildCommands(branch, buildername, revision):
 # RETURN: Command (string) that can be executed
 #     The command will be a string that can be run on the terminal
 def getTriggerCommands(branch, buildername, revision):
-    runArgs = populateArgs(branch, buildername, revision, 1)
-    return 'python trigger.py --buildername "' + buildername + '" --branch ' \
-        + branch + ' --rev ' + str(revision)
-
+    if 'talos' in buildername:
+        return 'python trigger.py --buildername "' + str(buildername) + \
+                '" --branch ' + str(branch) + ' --rev ' + str(revision) + \
+                ' --file ' + getInstallerLoc(branch, buildername, revision) 
+    else:
+        print 'python trigger.py --buildername "' + str(buildername) + \
+                '" --branch ' + str(branch) + ' --rev ' + str(revision) + \
+                ' --file ' + getInstallerLoc(branch, buildername, revision) + \
+                ' --file ' + getTestsZipLoc(branch,buildername, revision) 
 
 # API: triggerBuild
 # ARGUMENTS: branch, buildername, revision
