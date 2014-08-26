@@ -32,7 +32,9 @@ def json_response(func):
     return wrapper
 
 
-def create_db_connection(database='backfill-db.sqlite'):
+def create_db_connection(database='db/backfill-db.sqlite'):
+    if not os.path.exists(database):
+        database = os.path.join(os.path.dirname(os.path.realpath(__file__)), database)
     if os.path.exists(database):
         try:
             connection = sqlite3.connect(database)
@@ -71,7 +73,6 @@ def run_query(where_clause):
 
     fields = ['id', 'dateadded', 'datefinished', 'revision', 'branch', 'buildername', 'status', 'buildrevs', 'analyzerevs']
     sql = """select %s from jobs %s;""" % (', '.join(fields), where_clause)
-    print sql
     cursor.execute(sql)
 
     alerts = cursor.fetchall()
@@ -93,7 +94,6 @@ def add_new_request():
 
     jd = request.get_json()
     if jd:
-        print jd
         rev = jd["revision"]
         branch = jd["branch"]
         bn = jd["buildername"]
@@ -104,7 +104,6 @@ def add_new_request():
 
     ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     sql = "insert into jobs (dateadded, revision, branch, buildername, status) values ('%s', '%s', '%s', '%s', 'new');" % (ts, rev, branch, bn)
-    print sql
     cursor.execute(sql)
     db.commit()
     return root()
@@ -148,12 +147,15 @@ def run_submit_data():
     db.commit()
     return data
 
+def root():
+    return app.send_static_file('jobs.html')
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
     @app.route('/')
-    def root():
-        return app.send_static_file('jobs.html')
+    def index():
+        return root()
 
     @app.route('/js/<path:path>')
     def static_proxy(path):
