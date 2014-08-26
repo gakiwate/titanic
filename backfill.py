@@ -82,6 +82,7 @@ def processJob(job):
                 if not (titanic.isJobPending(job['branch'], job['buildername'], rev, auth) \
                         or titanic.isJobRunning(job['branch'], job['buildername'], rev, auth)):
                     updateStatus(job['id'], 'error')
+                    continue
 
                 updateStatus(job['id'], 'running')
             print 'Running Jobs...'
