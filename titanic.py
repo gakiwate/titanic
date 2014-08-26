@@ -334,7 +334,9 @@ def constructBuildName(runArgs):
         platform = 'Linux'
     elif platformXRef[runArgs['platform'][0]] == 'linux64':
         platform = 'Linux x86-64'
-    elif platformXRef[runArgs['platform'][0]] == 'winxp' or 'win7' or 'win8':
+    elif platformXRef[runArgs['platform'][0]] == 'winxp' or \
+            platformXRef[runArgs['platform'][0]] == 'win7' or \
+            platformXRef[runArgs['platform'][0]] == 'win8':
         platform = 'WINNT 5.2'
     else:
         platform = platformXRef[runArgs['platform'][0]]
@@ -566,21 +568,28 @@ def getBuildInfo(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
 
-    if platformXRef[runArgs['platform'][0]] == 'winxp' or 'win7':
+    print platformXRef[runArgs['platform'][0]]
+    print runArgs['platform']
+
+    if platformXRef[runArgs['platform'][0]] == 'winxp' or \
+            platformXRef[runArgs['platform'][0]] == 'win7':
         extension = 'zip'
         platform = 'win32'
-    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or 'osx10.7' or 'osx10.8':
+    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.7' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.8':
         extension = 'dmg'
         platform = 'mac'
         if runArgs['buildType'] == 'debug':
             platform = 'mac64'
-    elif platformXRef[runArgs['platform'][0]] == 'linux32':
-        extension = 'tar.bz2'
-        platform = 'linux-i686'
     elif platformXRef[runArgs['platform'][0]] == 'linux64':
         extension = 'tar.bz2'
         platform = 'linux-x86_64'
+    elif platformXRef[runArgs['platform'][0]] == 'linux32':
+        extension = 'tar.bz2'
+        platform = 'linux-i686'
 
+    print (ftp, version, platform, extension)
     return ftp, version, platform, extension
 
 
@@ -681,6 +690,7 @@ def triggerTask(branch, buildername, revision, payload, auth = None):
 
     print 'Your return code is: %s' % r.status_code
     print 'https://secure.pub.build.mozilla.org/buildapi/revision/%s/%s' % (branch, revision)
+    return r.status_code
 
 # server = '54.215.155.53:8314/'
 def startBackfill(branch, buildername, revision, server):
