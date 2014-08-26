@@ -568,9 +568,6 @@ def getBuildInfo(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
 
-    print platformXRef[runArgs['platform'][0]]
-    print runArgs['platform']
-
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
             platformXRef[runArgs['platform'][0]] == 'win7':
         extension = 'zip'
