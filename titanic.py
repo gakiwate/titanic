@@ -517,7 +517,15 @@ def setupArgsParser():
 def taskStatus(branch, buildername, revision, statusType):
     url = ('https://secure.pub.build.mozilla.org/builddata/buildjson/builds-%s.js') % (statusType)
     r = requests.get(url)
-    tasks = json.loads(r.text)
+
+    if 400 <= int(r.status_code) < 500:
+        print 'The task could not be triggered.'
+        return False
+
+    try:
+        tasks = json.loads(r.text)
+    except:
+        return False
 
     if branch not in tasks[statusType]:
         return False
