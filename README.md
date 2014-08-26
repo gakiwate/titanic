@@ -35,8 +35,8 @@ If you want to use the Server module you will need to install flask
     pip install flask
 
 In addition to get the server running in apache, you need to create the database and assign it proper permissions:
-    ls -la db/backfill-db.sqlite 
-    -rwxrwxr-- 1 www-data www-data 3072 Aug 26 18:23 db/backfill-db.sqlite
+ls -la db/backfill-db.sqlite 
+-rwxrwxr-- 1 www-data www-data 3072 Aug 26 18:23 db/backfill-db.sqlite
 
 Here is an example Apache configuration:
 <VirtualHost *:8314>
