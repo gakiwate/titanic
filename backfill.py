@@ -68,6 +68,7 @@ def processJob(job):
                 continue
 
             elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev):
+                print 'Error: For ' + rev + ' ' + job['buildername']
                 updateStatus(job['id'], 'error')
                 buildFlag = 0
                 continue
@@ -75,7 +76,6 @@ def processJob(job):
         if buildFlag:
             print 'Builds are done!'
             for rev in revList:
-                print rev
                 titanic.triggerJob(job['branch'], job['buildername'], rev)
             updateStatus(job['id'], 'running')
             print 'Running Jobs...'
@@ -85,7 +85,6 @@ def processJob(job):
         doneFlag = 1
         revList = job['analyzerevs'].split(',')
         for rev in revList:
-            print rev
             if (titanic.isJobPending(job['branch'], job['buildername'], rev) \
                     or titanic.isJobRunning(job['branch'], job['buildername'], rev)):
                 doneFlag = 0
