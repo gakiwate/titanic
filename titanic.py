@@ -8,6 +8,8 @@ import sys
 import datetime
 import bisect
 import requests
+import threading
+import Queue
 
 branchPaths = {
     'mozilla-aurora': 'releases/mozilla-aurora',
@@ -106,6 +108,9 @@ b2g_mozilla-central_helix_periodic opt
 
 b2g_mozilla-central_wasabi_periodic opt
 '''
+
+
+queue = Queue.Queue()
 
 
 def getPushLog(branch, startDate):
@@ -271,12 +276,51 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
     return csetResults
 
 
+# queueCSetResults calls getCSetResults for each revision in the input list of
+# revisions and puts the results into the queue.
+def queueCSetResults(branch, getPlatforms, getTests, getBuildType, revisions):
+    currentThread = threading.currentThread()
+    allThreads = threading.enumerate()
+    threadPosition = allThreads.index(currentThread)
+    previousThread = allThreads[threadPosition-1]
+    tempStoreResults = []
+
+    # Check if there is a previous thread and check whether it is still alive.
+    # If it is, store the results in a list until the previous thread exits,
+    # then put them into the queue.  This is to prevent multiple threads
+    # putting results into the queue at the same time and altering the order of
+    # revisions the runTitanicAnalysis/runTitanicNormal will investigate.
+    if threadPosition != 1 and previousThread.isAlive():
+        for rev in revisions:
+            result = getCSetResults(branch, getPlatforms, getTests, getBuildType, rev)
+            tempStoreResults.append(result)
+
+        previousThread.join()
+
+        for result in tempStoreResults:
+            queue.put(result)
+    # If the previous thread has completed, get the results and put them in the queue.
+    else:
+        for rev in revisions:
+            result = getCSetResults(branch, getPlatforms, getTests, getBuildType, rev)
+            queue.put(result)
+
+
 def runTitanicNormal(runArgs, allPushes):
+    # Spawn the number of threads input as argument into titanic.  getRange will
+    # divide up the revisions for each thread to handle.  For those revisions,
+    # each thread will getCSetResults and put the results into the queue.
+    for t in range(args.threads):
+        start, end = getRange(t, len(allPushes), args.threads)
+        thread = threading.Thread(target=queueCSetResults, args=(runArgs['branch'],
+                                  runArgs['platform'], runArgs['tests'], runArgs['buildType'],
+                                  allPushes[start:end+1]))
+        thread.daemon = True
+        thread.start()
+    # For each push to be analyzed, get it from the queue.
     for push in allPushes:
         print 'Getting Results for %s' % (push)
-        results = getCSetResults(
-            runArgs['branch'], runArgs['platform'],
-            runArgs['tests'], runArgs['buildType'], push)
+        results = queue.get()
         for i in results:
             print i
 
@@ -359,6 +403,22 @@ def constructBuildName(runArgs):
         ' ' + 'build'
 
 
+# For each thread, getRange gives start and end
+# index in the list of all revisions.  This divides up
+# the number of revisions each thread needs to get results
+# for, so they can each do equal work.
+def getRange(tid, len_revisions, nthreads):
+    chunk = len_revisions / nthreads
+    r = len_revisions % nthreads
+    if (tid < r):
+        start = (chunk + 1) * tid
+        end = start + chunk
+    else:
+        start = (chunk + 1) * r + chunk * (tid - r)
+        end = start + chunk - 1
+    return start, end
+
+
 def runTitanicAnalysis(runArgs, allPushes):
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
@@ -368,10 +428,20 @@ def runTitanicAnalysis(runArgs, allPushes):
 
     unBuiltRevList = []
     revPos = allPushes.index(runArgs['revision'])
-    for push in allPushes[revPos+1:]:
-        pushResults = getCSetResults(
-            runArgs['branch'], runArgs['platform'],
-            runArgs['tests'], runArgs['buildType'], push)
+    pushesToAnalyze = allPushes[revPos+1:]
+    # Spawn the number of threads input as argument into titanic.  getRange will
+    # divide up the revisions for each thread to handle.  For those revisions,
+    # each thread will getCSetResults and put the results into the queue.
+    for t in range(args.threads):
+        start, end = getRange(t, len(pushesToAnalyze), args.threads)
+        thread = threading.Thread(target=queueCSetResults,args=(runArgs['branch'],
+                                  runArgs['platform'], runArgs['tests'], runArgs['buildType'],
+                                  pushesToAnalyze[start:end+1]))
+        thread.daemon = True
+        thread.start()
+    # For each push to be analyzed, get it from the queue.
+    for push in pushesToAnalyze:
+        pushResults = queue.get()
 
         if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
@@ -385,10 +455,11 @@ def runTitanicAnalysis(runArgs, allPushes):
     # FIXME: Need to return an error
     return '',''
 
+
 def printCommands(revList, unBuiltRevList, runArgs):
     for rev in unBuiltRevList:
         print getBuildCommands(runArgs['branch'], runArgs['buildername'], rev)
-        
+
     if unBuiltRevList != []:
         print 'Trigger Builds. Wait for all builds to complete before proceeding...'
         return
@@ -410,6 +481,7 @@ def runTitanic(runArgs):
         printCommands(revList, unBuiltRevList, runArgs)
     else:
         runTitanicNormal(runArgs, allPushes)
+
 
 def populateArgs(branch, buildername, revision, delta):
     if buildername == '':
@@ -490,6 +562,8 @@ def setupArgsParser():
                         help='Revision for which to start bisection with!')
     parser.add_argument('--bn', action='store', dest='buildername', default='',
                         help='Buildername for which to run analysis.')
+    parser.add_argument('--threads', action='store', dest='threads', default=1,
+                        type=int, help='Number of threads to use.')
     return parser.parse_args()
 
 
@@ -698,4 +772,3 @@ if __name__ == '__main__':
     args = setupArgsParser()
     runArgs = verifyArgs(args)
     runTitanic(runArgs)
-
