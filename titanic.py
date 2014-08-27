@@ -10,6 +10,8 @@ import bisect
 import requests
 
 branchPaths = {
+    'mozilla-aurora': 'releases/mozilla-aurora',
+    'mozilla-beta': 'releases/mozilla-beta',
     'mozilla-central': 'mozilla-central',
     'mozilla-inbound': 'integration/mozilla-inbound',
     'b2g-inbound': 'integration/b2g-inbound',

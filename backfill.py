@@ -25,7 +25,7 @@ if os.path.exists(credsfile):
     if len(lines) == 2:
         auth = (lines[0].strip(), lines[1].strip())
 
-def updateJob(jobID, branch, buildername, revision, delta=7):
+def updateJob(jobID, branch, buildername, revision, delta=30):
     revList, buildList = titanic.runAnalysis(
         branch, buildername, revision, delta)
 
