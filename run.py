@@ -1,31 +1,44 @@
 import titanic
 import sys
+import argparse
 
-buildername = 'Windows 7 32-bit mozilla-central debug test mochitest-1'
-branch = 'mozilla-central'
-delta = 30
-revision = 'cd2acc7ab2f8'
+# Optinally you can direct it to your own local server
+# server = 'http://0.0.0.0:8314/'
+server = 'http://54.215.155.53:8314/'
 
-revList, buildList = titanic.runAnalysis(
-    branch, buildername, revision, delta)
+def run(args):
+    titanic.startBackfill(args.branch, args.buildername, args.revision, server)
+    print 'Job Queued...'
+    print 'The jobs should be listed at: ' + server + 'active_jobs'
 
-for rev in buildList:
-    if not (titanic.isBuildPending(branch, buildername, rev) \
-            or titanic.isBuildRunning(branch, buildername, rev)):
-        titanic.triggerBuild(branch, buildername, rev)
-    else:
-        if not titanic.isBuildSuccessful(branch, buildername, revision):
-            print 'Builds are yet to be completed for revision ' + rev + ' ...'
-            print 'If the builds have been running for a very long time make sure the builds have not failed!'
 
-if buildList != []:
-    sys.exit(1)
+def verifyArgs(args):
+    if not args.revision:
+        print 'Issue with revision.'
+        return False
+    if args.branch not in args.buildername:
+        print 'Make sure buildername and branches match'
+        return False
 
-print 'All builds are completed. Starting Jobs...'
+    return True
 
-for rev in revList:
-    if not (titanic.isJobPending(branch, buildername, rev) \
-            or titanic.isJobRunning(branch, buildername, rev)):
-        titanic.triggerJob(branch, buildername, rev)
-    else:
-        print 'Job has already been triggered'
+
+def setupArgsParser():
+    parser = argparse.ArgumentParser(description='Run Titanic')
+    parser.add_argument(
+        '-b', action='store', dest='branch', default='mozilla-central',
+        help='branch on which to run backfill')
+    parser.add_argument(
+        '-r', action='store', dest='revision', default=0,
+        help='Revision for which to start bisection with!')
+    parser.add_argument(
+        '--bn', action='store', dest='buildername', default='',
+        help='buildername for which to run analysis.')
+    return parser.parse_args()
+
+if __name__ == '__main__':
+    args = setupArgsParser()
+    if not verifyArgs(args):
+        print 'Look up Usage...'
+        sys.exit(1)
+    run(args)
