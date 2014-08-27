@@ -381,27 +381,16 @@ def runTitanicAnalysis(runArgs, allPushes):
         ' not found in the current range. Consider increasing range!'
     sys.exit(1)
 
-
 def printCommands(revList, unBuiltRevList, runArgs):
     for rev in unBuiltRevList:
-        builderName = constructBuildName(runArgs)
-        print 'python trigger.py --buildername "' + builderName + \
-            '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev)
-
+        print getBuildCommands(runArgs['branch'], runArgs['buildername'], rev)
+        
     if unBuiltRevList != []:
         print 'Trigger Builds. Wait for all builds to complete before proceeding...'
         sys.exit(1)
 
     for rev in revList:
-        if 'talos' in runArgs['buildername']:
-            print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
-                '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
-                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], rev)
-        else:
-            print 'python trigger.py --buildername "' + str(runArgs['buildername']) + \
-                '" --branch ' + str(runArgs['branch']) + ' --rev ' + str(rev) + \
-                ' --file ' + getInstallerLoc(runArgs['branch'], runArgs['buildername'], rev) + \
-                ' --file ' + getTestsZipLoc(runArgs['branch'], runArgs['buildername'], rev)
+        print getTriggerCommands(runArgs['branch'], runArgs['buildername'], rev)
 
 
 def runTitanic(runArgs):
@@ -643,7 +632,7 @@ def getTriggerCommands(branch, buildername, revision):
                 '" --branch ' + str(branch) + ' --rev ' + str(revision) + \
                 ' --file ' + getInstallerLoc(branch, buildername, revision) 
     else:
-        print 'python trigger.py --buildername "' + str(buildername) + \
+        return 'python trigger.py --buildername "' + str(buildername) + \
                 '" --branch ' + str(branch) + ' --rev ' + str(revision) + \
                 ' --file ' + getInstallerLoc(branch, buildername, revision) + \
                 ' --file ' + getTestsZipLoc(branch,buildername, revision) 
@@ -705,3 +694,4 @@ if __name__ == '__main__':
     args = setupArgsParser()
     runArgs = verifyArgs(args)
     runTitanic(runArgs)
+
