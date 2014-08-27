@@ -363,7 +363,8 @@ def runTitanicAnalysis(runArgs, allPushes):
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
         print 'Consider increasing range!'
-        sys.exit(1)
+        # FIXME: Need to return an error
+        return '',''
 
     unBuiltRevList = []
     revPos = allPushes.index(runArgs['revision'])
@@ -381,7 +382,8 @@ def runTitanicAnalysis(runArgs, allPushes):
 
     print 'Revision that successfully passed ' + str(runArgs['tests']) + \
         ' not found in the current range. Consider increasing range!'
-    sys.exit(1)
+    # FIXME: Need to return an error
+    return '',''
 
 def printCommands(revList, unBuiltRevList, runArgs):
     for rev in unBuiltRevList:
@@ -389,7 +391,7 @@ def printCommands(revList, unBuiltRevList, runArgs):
         
     if unBuiltRevList != []:
         print 'Trigger Builds. Wait for all builds to complete before proceeding...'
-        sys.exit(1)
+        return
 
     for rev in revList:
         print getTriggerCommands(runArgs['branch'], runArgs['buildername'], rev)
@@ -548,7 +550,8 @@ def findBuildLocation(branch, buildername, revision):
     status, result = findBuildStatus(revision, runArgs, 'success')
     if not status:
         print 'Please make sure that there is a build for revision: ' + revision
-        sys.exit(1)
+        ## FIXME: Needs to return a proper error
+        return ''
 
     return result[5]
 
