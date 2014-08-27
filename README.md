@@ -2,41 +2,41 @@
 
 #About Titanic
 
-Titanic is designed primarily around the Mozilla build and test systems. The 
-goal of Titanic is to be able to bisect holes in tests for revisions submitted.
-Long term, titanic is not only to be a standalone tool but also allow have
-hooks for other tools to plug in.
+Titanic is designed around the Mozilla build and test systems. The goal of Titanic is to be able to bisect holes in tests for revisions submitted. Long term, titanic is not only to be a standalone tool but also allow have hooks for other tools to plug in.
 
-The main idea is to lock into revisions for tests that did not run. Titanic
-takes in a revision to begin the analysis from - this usually is a revision
-that marks the start of issues for some tests. In addition to this, the branch,
-platform and test are specified.
+The main idea is to lock into revisions for tests that did not run. Titanic takes in a revision to begin the analysis from. Titanic trudges back from that point to the last revision for which the test was successfully run.
 
-##Working
+## Working
 
-After this titanic will trudge through the revisions and find the all the
-revisions for which the test did not successfuly run. It will also determine
-if a build needs to be done for the revision and platform in question. 
+After being given this data, titanic will trudge through the revisions and find the all the revisions for which the test did not successfully run. It will also determine if a build needs to be done for the revision and platform in question.
 
-#Installation
+# Installation
 
-You'll need to install the Python 'requests' package
+To run ''Titanic'' you'll need to install the Python 'requests' package
 
 You can do this by running the following command after you have installed 'pip'
 
     pip install requests
 
-To use titanic in analysis mode, you need to run the following command
+## Setting Up
 
-    python titanic.py -r [revision] -b [branch] --bn [buildername] -d [range]
+To make use of the trigger commands that titanic provides you should add the following line in ~/.netrc
 
-If you want to use the Server module you will need to install flask
+    machine secure.pub.build.mozilla.org login <email> password <password>
+
+In case you don't want to do that you can manually enter the LDAP username and password when prompted!
+
+## Installing the Server: Local Usage
+
+In case you want to use the default server hosted by Mozilla and don't want to run your own small server then this section of the installation is optional.
+
+To run the server you need to install 'flask'
 
     pip install flask
 
 In addition to get the server running in apache, you need to create the database and assign it proper permissions:
 ```
-ls -la db/backfill-db.sqlite 
+ls -la db/backfill-db.sqlite
 -rwxrwxr-- 1 www-data www-data 3072 Aug 26 18:23 db/backfill-db.sqlite
 ```
 
@@ -66,36 +66,76 @@ Here is an example Apache configuration:
 </VirtualHost>
 ```
 
-#Standalone Usage
+# Usage
 
-    For the example below, titanic extracts information as follows
+There are various ways to use Titanic.
 
-    python titanic.py -r 12b60cc85be1 -b mozilla-inbound -d 6 --bn "Ubuntu HW 12.04 mozilla-inbound pgo talos other"
+## Using the WebUI
 
-    Revision: 12b60cc85be1
-    Branch: mozilla-inbound
-    Platform: Ubuntu HW 12.04
-    Build Type: pgo
-    Test: talos other
+You can use the WebUI at the following location to make new requests. If you choose to use this, then the server will take care of the rest and trigger the builds and jobs as needed.
 
-#Trigger Usage
+    New Requests: http://54.215.155.53:8314/new_request
 
-To make use of the trigger you should add the following line in ~/.netrc
+You can look at the active jobs at the following location
 
-    machine secure.pub.build.mozilla.org login <email> password <password>
+    Active Requests: http://54.215.155.53:8314/active_jobs
 
-In case you don't want to do that you can manually enter the LDAP username and password when prompted!
+This is the easiest way to use Titanic and if you are unsure of what to do, this is probably the way to go.
 
-## Common Issues
+## Using Scripts
 
-If you get a return code of 401 it most probably means that you have supplied
+You can use titanic.startBackfill API to queue jobs with the server.
+
+A good example would be to look at the code in https://github.com/gakiwate/titanic/blob/master/run.py You can use run.py using the following command.
+
+    python run.py -r 894b7372561d --bn 'Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2' -b 'mozilla-inbound'
+
+## Using Locally with WebUI
+
+You can use ''Titanic'' locally as well with the web interface. For that ensure you have installed flask. Start up the server using the command.
+
+    python server.py
+
+You will then we able to create requests and active jobs at
+
+```
+    New Requests: http://0.0.0.0:8314/new_request
+    Active Requests: http://0.0.0.0:8314/active_jobs
+```
+
+However, to ensure that the requests get processed you need to run backfill.py in a cron job. A hack would be to run backfill.py in a while loop with some sleep thrown in.
+
+You will also be able to use the scripts to queue jobs. All you need to do is change the server address to face the local server.
+
+## Standalone Usage
+
+To use titanic in the standalone mode, you need to run the following command
+
+    python titanic.py -r [revision] -b [branch] --bn [buildername] -d [range]
+
+== Example ==
+For the example below we would like to know how to backfill mochitest-2 for Linux x64 <br>
+
+    python titanic.py -r 894b7372561d --bn 'Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2' -d 10 -b 'mozilla-inbound'
+
+Titanic goes through the tests and figures no builds need to be made and the following tests need to be run! It prompts you the commands that can be used to run the tests. <br>
+
+```
+    python trigger.py --buildername "Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2" --branch mozilla-inbound --rev 3a545eb9828b --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409081492/firefox-34.0a1.en-US.linux-x86_64.tar.bz2 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409081492/firefox-34.0a1.en-US.linux-x86_64.tests.zip
+    python trigger.py --buildername "Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2" --branch mozilla-inbound --rev b005b4e38525 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409081034/firefox-34.0a1.en-US.linux-x86_64.tar.bz2 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409081034/firefox-34.0a1.en-US.linux-x86_64.tests.zip
+    python trigger.py --buildername "Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2" --branch mozilla-inbound --rev 4354d5ed2311 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409080167/firefox-34.0a1.en-US.linux-x86_64.tar.bz2 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409080167/firefox-34.0a1.en-US.linux-x86_64.tests.zip
+    python trigger.py --buildername "Ubuntu VM 12.04 x64 mozilla-inbound debug test mochitest-2" --branch mozilla-inbound --rev 7f68752ffe1e --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409079043/firefox-34.0a1.en-US.linux-x86_64.tar.bz2 --file http://ftp.mozilla.org/pub/mozilla.org/firefox/tinderbox-builds/mozilla-inbound-linux64-debug/1409079043/firefox-34.0a1.en-US.linux-x86_64.tests.zip
+```
+
+#Common Issues
+If you are using ''Titanic'' locally and get an error code of 401 it most probably means that you possibly could have supplied incorrect credentials either in ~/.netrc or in backfill.py
 
     Status Code: 401 -- Wrong username and password
 
 #Titanic as a Library
 Titanic can also be used as a library. To use as a library you can simply import titanic and use one of the APIs listed below as per the needs.
 
-    import titanic
+    import titanica
 
 ##Branch
 The branch is the tree on which the test and revision to be investigated was run.
@@ -164,13 +204,3 @@ RETURN: status code
     titanic.triggerJob(branch, buildername, revision):
 
 The above command can be used after we import titanic.
-
-#Common Issues
-
-##Increasing Range
-
-    Revision not found in the current range. Consider increasing range!
-
-In this case, increase the range by increasing the number of days to analyze using '-d'
-
- 
