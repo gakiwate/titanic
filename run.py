@@ -6,18 +6,24 @@ import argparse
 # server = 'http://0.0.0.0:8314/'
 server = 'http://54.215.155.53:8314/'
 
+
 def run(args):
     titanic.startBackfill(args.branch, args.buildername, args.revision, server)
     print 'Job Queued...'
-    print 'The jobs should be listed at: ' + server + 'active_jobs'
+    print 'The jobs should be listed at: %sactive_jobs' % (server)
 
 
 def verifyArgs(args):
     if not args.revision:
-        print 'Issue with revision.'
+        print 'A revision is needed to run the script. You did not send in one!'
         return False
+
+    if args.buildername == '':
+        print 'A buildername is needed to run the script. You did not send in one!'
+
     if args.branch not in args.buildername:
-        print 'Make sure buildername and branches match'
+        print 'Expected branch %s to be part of buildername %s' % (
+            args.branch, args.buildername)
         return False
 
     return True
