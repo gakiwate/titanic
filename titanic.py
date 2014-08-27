@@ -616,10 +616,9 @@ def runAnalysis(branch, buildername, revision, delta=7):
 # Based on this getBuildCommands will revrt back with the appropriate
 # buildCommand that could be run
 def getBuildCommands(branch, buildername, revision):
-    runArgs = populateArgs(branch, buildername, revision, 1)
     buildName = constructBuildName(runArgs)
     return 'python trigger.py --buildername "' + buildName + '" --branch ' \
-        + str(runArgs['branch']) + ' --rev ' + str(revision)
+        + str(branch) + ' --rev ' + str(revision)
 
 
 # API: getTriggerCommands
