@@ -2,6 +2,7 @@ import titanic
 import requests
 import json
 import time
+import os
 
 '''
 Status
@@ -17,6 +18,12 @@ Status
 server = 'http://54.215.155.53:8314/'
 auth = None
 # auth = ('<username>@mozilla.com', '<password>')
+credsfile = os.path.expanduser('~/.titanic')
+if os.path.exists(credsfile):
+    with open(credsfile, 'r') as f:
+        lines = f.readlines()
+    if len(lines) == 2:
+        auth = (lines[0].strip(), lines[1].strip())
 
 def updateJob(jobID, branch, buildername, revision, delta=7):
     revList, buildList = titanic.runAnalysis(
