@@ -61,8 +61,10 @@ def processJob(job):
         if not (job['buildrevs'] == ''):
             buildList = job['buildrevs'].split(',')
             for rev in buildList:
-                print rev
-                titanic.triggerBuild(job['branch'], job['buildername'], rev, auth)
+                if not (titanic.isBuildPending(job['branch'], job['buildername'], rev, auth) \
+                        or titanic.isBuildRunning(job['branch'], job['buildername'], rev, auth)):
+                    titanic.triggerBuild(job['branch'], job['buildername'], rev, auth)
+
         updateStatus(job['id'], 'building')
         print 'Building for Job...'
 
@@ -86,6 +88,9 @@ def processJob(job):
             print 'Builds are done!'
             for rev in revList:
                 titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
+                if 'talos' in job['buildername']:
+                    titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
+                    titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
 
             updateStatus(job['id'], 'running')
             print 'Running Jobs...'
