@@ -127,7 +127,11 @@ def get_jobs():
 @json_response
 def run_updatestatus_data():
     data = request.get_json()
-    sql = """update jobs set status='%s' where id=%s;""" % (data['status'], data['id'])
+    if data['status']=='done':
+        ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        sql = """update jobs set status='%s', datefinished='%s' where id=%s;""" % (data['status'], ts, data['id'])
+    else:
+        sql = """update jobs set status='%s' where id=%s;""" % (data['status'], data['id'])
     db = create_db_connection()
     cursor = db.cursor()
     cursor.execute(sql)
