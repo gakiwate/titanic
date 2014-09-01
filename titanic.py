@@ -6,6 +6,8 @@ import urllib
 import argparse
 import sys
 import datetime
+import glob
+import re
 import bisect
 import requests
 
@@ -107,6 +109,12 @@ b2g_mozilla-central_helix_periodic opt
 b2g_mozilla-central_wasabi_periodic opt
 '''
 
+#
+# The following strings are used to 
+# read version infromation from the build directory
+#
+VERSION_GLOB = "firefox-*.en-US.*.*"
+VERSION_RE = '(?<=firefox-).+(?=.en.US)'
 
 def getPushLog(branch, startDate):
     # Example
@@ -555,12 +563,36 @@ def findBuildLocation(branch, buildername, revision):
 
     return result[5]
 
+def getVersionInfo(buildLocatio):
+    files = glob.glob('%s/%s' % (buildLocation, VERSION_GLOB))
+
+    ## TODO:
+    ## what should happen should a file to get the 
+    ## version information does not exist?
+    if not files:
+      return 'unknown'
+
+    targetFile = files[0] ## any one of the file is fine. Using the first one
+    version_re = re.search(VERSION_RE, targetFile)
+
+
+    ## TODO:
+    ## what should happen when our regular expression
+    ## cannot find any match? (i.e. cant find the version number)
+    if not version_re:
+      return 'unknown'
+
+    ## TODO:
+    ## Technically, this is not gauranteed to return the version number
+    ## Should there be a safeguard to check if somewhat appropriately value
+    ## has been collected?
+    return version_re.group(0)
 
 def getBuildInfo(branch, buildername, revision):
-    version = '34.0a1'
-
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
+
+    version = getVersionInfo(ftp)
 
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
             platformXRef[runArgs['platform'][0]] == 'win7':
