@@ -354,6 +354,14 @@ def findBuildStatus(push, runArgs, statusType):
     platforms = getPotentialPlatforms(
         runArgs['buildername'], runArgs['branch'])
     if 'pgo' in runArgs['buildername'].lower():
+        # In the mozilla-aurora and mozilla-beta branches
+        # all builds are PGO thus we do not specifically
+        # need to build a PGO build
+        if runArgs['branch'] == 'mozilla-aurora' or \
+                runArgs['branch'] == 'mozilla-beta':
+            results = getCSetResultsBuild(
+                runArgs['branch'], platforms, ['build'], [''], push)
+
         results = getCSetResultsBuild(
             runArgs['branch'], platforms, ['opt'], ['pgo-build'], push)
     elif 'asan' in runArgs['buildername'].lower() and \
@@ -388,6 +396,14 @@ def constructBuildName(runArgs):
         platform = platformXRef[runArgs['platform'][0]]
 
     if 'pgo' in runArgs['buildername'].lower():
+        # In the mozilla-aurora and mozilla-beta branches
+        # all builds are PGO thus we do not specifically
+        # need to build a PGO build
+        if runArgs['branch'] == 'mozilla-aurora' or \
+                runArgs['branch'] == 'mozilla-beta':
+            return platform + ' ' + runArgs['branch'] + \
+                ' ' + 'build'
+
         return platform + ' ' + \
             runArgs['branch'] + ' ' + 'pgo-build'
     if 'asan' in runArgs['buildername'].lower() and \
