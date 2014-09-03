@@ -435,7 +435,7 @@ def getRange(tid, len_revisions, nthreads):
     return start, end
 
 
-def runTitanicAnalysis(runArgs, allPushes):
+def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
         print 'Consider increasing range!'
@@ -444,7 +444,8 @@ def runTitanicAnalysis(runArgs, allPushes):
 
     unBuiltRevList = []
     revPos = allPushes.index(runArgs['revision'])
-    pushesToAnalyze = allPushes[revPos+1:]
+
+    pushesToAnalyze = allPushes[revPos+1:revPos+revLimit+1]
     # Spawn the number of threads input as argument into titanic.  getRange will
     # divide up the revisions for each thread to handle.  For those revisions,
     # each thread will getCSetResults and put the results into the queue.
