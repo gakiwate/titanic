@@ -25,37 +25,43 @@ if os.path.exists(credsfile):
     if len(lines) == 2:
         auth = (lines[0].strip(), lines[1].strip())
 
-def updateJob(jobID, branch, buildername, revision, delta=30):
+def updateJob(job, delta=30):
     revList, buildList = titanic.runAnalysis(
-        branch, buildername, revision, delta)
+        job['branch'], job['buildername'], job['revision'], delta)
 
     buildRevs = ','.join(buildList)
     revs = ','.join(revList)
 
-    data = {'id': jobID, 'buildrevs': buildRevs, 'analyzerevs': revs}
+    data = {'id': job['id'], 'buildrevs': buildRevs, 'analyzerevs': revs}
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     r = requests.post(server + 'update', data=json.dumps(data), headers=headers)
-    print r.status_code
-    return r.status_code
 
-def updateStatus(jobID, status):
-    data = {'id': jobID, 'status': status}
+    if r.status_code in [requests.codes.ok, requests.codes.accepted]:
+        job['buildrevs'] = buildRevs
+        job['analyzerevs'] = revs
+
+    return job
+
+def updateStatus(job, status):
+    data = {'id': job['id'], 'status': status}
     headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
     r = requests.post(server + 'update_status', data=json.dumps(data), headers=headers)
 
-def processJob(job):
-    if job['status'] == 'error':
-        return
+    if r.status_code in [requests.codes.ok, requests.codes.accepted]:
+        job['status'] = status
 
-    if job['status'] == 'new':
+    return job
+
+def processJob(job):
+   if job['status'] == 'new':
         print 'New Job...'
-        updateJob(job['id'], job['branch'], job['buildername'], job['revision'])
-        updateStatus(job['id'], 'updated')
+        job = updateJob(job)
+        job = updateStatus(job, 'updated')
         print 'Updated Job...'
 
     if job['status'] == 'updated':
         if (job['buildrevs'] == '') and (job['analyzerevs'] == ''):
-            updateStatus(job['id'], 'done')
+            job = updateStatus(job, 'done')
             return
 
         if not (job['buildrevs'] == ''):
@@ -65,7 +71,7 @@ def processJob(job):
                         or titanic.isBuildRunning(job['branch'], job['buildername'], rev, auth)):
                     titanic.triggerBuild(job['branch'], job['buildername'], rev, auth)
 
-        updateStatus(job['id'], 'building')
+        job = updateStatus(job, 'building')
         print 'Building for Job...'
 
     if job['status'] == 'building':
@@ -80,7 +86,7 @@ def processJob(job):
 
             elif not titanic.isBuildSuccessful(job['branch'], job['buildername'], rev):
                 print 'Error: For ' + rev + ' ' + job['buildername']
-                updateStatus(job['id'], 'error')
+                job = updateStatus(job, 'error')
                 buildFlag = 0
                 continue
 
@@ -92,7 +98,7 @@ def processJob(job):
                     titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
                     titanic.triggerJob(job['branch'], job['buildername'], rev, auth)
 
-            updateStatus(job['id'], 'running')
+            job = updateStatus(job, 'running')
             print 'Running Jobs...'
 
 
@@ -105,8 +111,11 @@ def processJob(job):
                 doneFlag = 0
 
         if doneFlag:
-            updateStatus(job['id'], 'done')
+            job = updateStatus(job, 'done')
             print 'Done'
+
+    if job['status'] == 'error':
+        return
 
 def processCron():
     jobsJSON = requests.get(server + 'active_jobs')
