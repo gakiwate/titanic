@@ -382,7 +382,6 @@ def findBuildStatus(push, runArgs, statusType):
         return [False, None]
 
     for result in results:
-        print result
         if result[0] == statusType:
             return [True,result]
 
@@ -677,7 +676,6 @@ def getBuildInfo(branch, buildername, revision):
         extension = 'tar.bz2'
         platform = 'linux-i686'
 
-    print (ftp, version, platform, extension)
     return ftp, version, platform, extension
 
 
