@@ -62,12 +62,9 @@ def processJob(job):
    if job['status'] == 'new':
         print 'New Job...'
         job,retVal = updateJob(job)
-        if(retVal == 'bounds-error'):
-            job = updateStatus(job, 'bounds-error')
-            print 'Updated Job..'
-        else:
-            job = updateStatus(job, 'updated')
-            print 'Updated Job...'
+        job = updateStatus(job, retVal)
+        print 'Updated Job..'
+    
 
     if job['status'] == 'updated':
         if (job['buildrevs'] == '') and (job['analyzerevs'] == ''):
