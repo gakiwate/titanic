@@ -11,6 +11,7 @@ Status
     building
     running
     done
+    bounds-error
 '''
 
 # Optinally you can direct it to your own local server
@@ -28,6 +29,11 @@ if os.path.exists(credsfile):
 def updateJob(job, delta=30):
     revList, buildList = titanic.runAnalysis(
         job['branch'], job['buildername'], job['revision'], delta)
+    revCount = len(revList)
+    buildCount = len(buildList)
+    retVal = 'updated'
+    if(buildCount > 5 or revCount > 10 ):
+        retVal = 'bounds-error'
 
     buildRevs = ','.join(buildList)
     revs = ','.join(revList)
@@ -40,7 +46,7 @@ def updateJob(job, delta=30):
         job['buildrevs'] = buildRevs
         job['analyzerevs'] = revs
 
-    return job
+    return job,retVal
 
 def updateStatus(job, status):
     data = {'id': job['id'], 'status': status}
@@ -55,9 +61,13 @@ def updateStatus(job, status):
 def processJob(job):
    if job['status'] == 'new':
         print 'New Job...'
-        job = updateJob(job)
-        job = updateStatus(job, 'updated')
-        print 'Updated Job...'
+        job,retVal = updateJob(job)
+        if(retVal == 'bounds-error'):
+            job = updateStatus(job, 'bounds-error')
+            print 'Updated Job..'
+        else:
+            job = updateStatus(job, 'updated')
+            print 'Updated Job...'
 
     if job['status'] == 'updated':
         if (job['buildrevs'] == '') and (job['analyzerevs'] == ''):
@@ -115,6 +125,10 @@ def processJob(job):
             print 'Done'
 
     if job['status'] == 'error':
+        return
+    
+    if job['status'] == 'bounds-error':
+        print 'Too many builds or revisions to be analyzed'
         return
 
 def processCron():
