@@ -11,6 +11,14 @@ import requests
 import threading
 import Queue
 
+#
+# The following strings are used to
+# read version infromation from the build directory
+#
+VERSION_GLOB = '*-*.*'
+VERSION_RE = "(?<=-)[0-9]+\.\w*"
+DEFAULT_VERSION = "35.0a1"
+
 branchPaths = {
     'mozilla-aurora': 'releases/mozilla-aurora',
     'mozilla-beta': 'releases/mozilla-beta',
@@ -651,12 +659,30 @@ def findBuildLocation(branch, buildername, revision):
 
     return result[5]
 
+def getVersionInfo(buildLocation):
+    files = glob.glob('%s/%s' % (buildLocation, VERSION_GLOB))
+
+    if not files:
+      ## if no files are found to extract version number
+      ## return the default version number
+      return DEFAULT_VERSION
+
+    targetFile = files[0] ## any one of the file is fine. Using the first one
+    version_re = re.search(VERSION_RE, targetFile)
+
+    if not version_re:
+      ## if extracting version number from the filename fails
+      ## return the default version number
+      return DEFAULT_VERSION
+
+    version = version_re.group(0)
+
+    return version
 
 def getBuildInfo(branch, buildername, revision):
-    version = '34.0a1'
-
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
+    version = getVersionInfo(ftp)
 
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
             platformXRef[runArgs['platform'][0]] == 'win7':
