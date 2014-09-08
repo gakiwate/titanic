@@ -6,6 +6,8 @@ import urllib
 import argparse
 import sys
 import datetime
+import glob
+import re
 import bisect
 import requests
 import threading
@@ -117,6 +119,12 @@ b2g_mozilla-central_helix_periodic opt
 b2g_mozilla-central_wasabi_periodic opt
 '''
 
+#
+# The following strings are used to 
+# read version infromation from the build directory
+#
+VERSION_GLOB = "firefox-*.en-US.*.*"
+VERSION_RE = '(?<=firefox-).+(?=.en.US)'
 
 queue = Queue.Queue()
 
@@ -682,6 +690,8 @@ def getVersionInfo(buildLocation):
 def getBuildInfo(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
+    version = getVersionInfo(ftp)
+
     version = getVersionInfo(ftp)
 
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
