@@ -455,7 +455,6 @@ def getRange(tid, len_revisions, nthreads):
         end = start + chunk - 1
     return start, end
 
-
 def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
@@ -817,6 +816,48 @@ def triggerTask(branch, buildername, revision, payload, auth = None):
     print 'Your return code is: %s' % r.status_code
     print 'https://secure.pub.build.mozilla.org/buildapi/revision/%s/%s' % (branch, revision)
     return r.status_code
+
+# API: rangeFill
+# ARGUMENTS: branch, buildername, startRev, endRev, delta
+# Return: revBetweenList, revBuildLast
+# rangeFill take in a start revision and an end revision
+# then return a list of revisions between the two revision
+# and a list of builds that are needed
+def rangeFill(branch, buildername, startRev, endRev, delta=30):
+    ## 1. get all push logs
+    allPushes = []
+    startDate = datetime.datetime.utcnow() - \
+                    datetime.timedelta(hours=delta*24)
+    allPushes = getPushLog(branch, startDate.strftime('%Y-%m-%d'))
+
+    ## 2. look for existence of startRev/endRev
+    if startRev not in allPushes or endRev not in allPushes:
+        return [], []
+
+    ## 3. conduct analysis. adapted from runTitanicAnalysis
+    unBuiltRevList = []
+
+    ## note:
+    ## startRev = revision to begin searching. That is, this is an older revision than endRev
+    ## endRev   = revision to "stop" search. That is, the is a newer revision than startRev
+    ## However, allPushes is sorted reverse-chronologically. Hence we have
+    ## allPushses = [..., endRev, ..., startRev, ...]
+    ## Hence, revPos_start looks for the index of endRev, and vice versa
+    revPos_start = allPushes.index(endRev)
+    revPos_end = allPushes.index(startRev)
+
+    if revPos_start > revPos_end:
+        print "warning: startRev is more recent than endRev (did you reverse them?)"
+        return [], []
+
+    pushesToAnalyze = allPushes[revPos_start:revPos_end+1]
+    runArgs = {'buildername': buildername, "branch": branch}
+    for push in pushesToAnalyze:
+        print "analyzing", push
+        if not findBuildStatus(push, runArgs, 'success')[0]:
+            unBuiltRevList.append(push)
+
+    return allPushes[revPos_start:revPos_end+1], unBuiltRevList
 
 # server = '54.215.155.53:8314/'
 def startBackfill(branch, buildername, revision, server):
