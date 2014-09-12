@@ -308,9 +308,10 @@ def getPotentialPlatforms(builderInfo, branch):
         potBuildP.append('WINNT 5.2')
         potBuildP.append('Windows XP 32-bit')
     elif platformXRef[platform] == 'osx10.6' or \
+            platformXRef[platform] == 'osx10.7' or \
             platformXRef[platform] == 'osx10.8':
-        potBuildP.append('Rev4 MacOSX Lion 10.7')
         potBuildP.append('OS X 10.7')
+        potBuildP.append('Rev4 MacOSX Lion 10.7')
 
     return potBuildP
 
@@ -369,6 +370,10 @@ def constructBuildName(runArgs):
             platformXRef[runArgs['platform'][0]] == 'win7' or \
             platformXRef[runArgs['platform'][0]] == 'win8':
         platform = 'WINNT 5.2'
+    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.7' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.8':
+        platform = 'OS X 10.7'
     else:
         platform = platformXRef[runArgs['platform'][0]]
 
