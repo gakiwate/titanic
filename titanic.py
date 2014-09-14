@@ -119,13 +119,6 @@ b2g_mozilla-central_helix_periodic opt
 b2g_mozilla-central_wasabi_periodic opt
 '''
 
-#
-# The following strings are used to 
-# read version infromation from the build directory
-#
-VERSION_GLOB = "firefox-*.en-US.*.*"
-VERSION_RE = '(?<=firefox-).+(?=.en.US)'
-
 queue = Queue.Queue()
 
 
