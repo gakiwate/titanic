@@ -117,8 +117,6 @@ b2g_mozilla-central_helix_periodic opt
 b2g_mozilla-central_wasabi_periodic opt
 '''
 
-queue = Queue.Queue()
-
 def getPushLog(branch, startDate):
     # Example
     # Get PushLog for 2014-06-16
