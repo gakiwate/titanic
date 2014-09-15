@@ -10,8 +10,6 @@ import glob
 import re
 import bisect
 import requests
-import threading
-import Queue
 
 #
 # The following strings are used to
@@ -120,7 +118,6 @@ b2g_mozilla-central_wasabi_periodic opt
 '''
 
 queue = Queue.Queue()
-
 
 def getPushLog(branch, startDate):
     # Example
@@ -285,51 +282,12 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
     return csetResults
 
 
-# queueCSetResults calls getCSetResults for each revision in the input list of
-# revisions and puts the results into the queue.
-def queueCSetResults(branch, getPlatforms, getTests, getBuildType, revisions):
-    currentThread = threading.currentThread()
-    allThreads = threading.enumerate()
-    threadPosition = allThreads.index(currentThread)
-    previousThread = allThreads[threadPosition-1]
-    tempStoreResults = []
-
-    # Check if there is a previous thread and check whether it is still alive.
-    # If it is, store the results in a list until the previous thread exits,
-    # then put them into the queue.  This is to prevent multiple threads
-    # putting results into the queue at the same time and altering the order of
-    # revisions the runTitanicAnalysis/runTitanicNormal will investigate.
-    if threadPosition != 1 and previousThread.isAlive():
-        for rev in revisions:
-            result = getCSetResults(branch, getPlatforms, getTests, getBuildType, rev)
-            tempStoreResults.append(result)
-
-        previousThread.join()
-
-        for result in tempStoreResults:
-            queue.put(result)
-    # If the previous thread has completed, get the results and put them in the queue.
-    else:
-        for rev in revisions:
-            result = getCSetResults(branch, getPlatforms, getTests, getBuildType, rev)
-            queue.put(result)
-
-
 def runTitanicNormal(runArgs, allPushes):
-    # Spawn the number of threads input as argument into titanic.  getRange will
-    # divide up the revisions for each thread to handle.  For those revisions,
-    # each thread will getCSetResults and put the results into the queue.
-    for t in range(args.threads):
-        start, end = getRange(t, len(allPushes), args.threads)
-        thread = threading.Thread(target=queueCSetResults, args=(runArgs['branch'],
-                                  runArgs['platform'], runArgs['tests'], runArgs['buildType'],
-                                  allPushes[start:end+1]))
-        thread.daemon = True
-        thread.start()
-    # For each push to be analyzed, get it from the queue.
     for push in allPushes:
         print 'Getting Results for %s' % (push)
-        results = queue.get()
+        results = getCSetResults(
+            runArgs['branch'], runArgs['platform'],
+            runArgs['tests'], runArgs['buildType'], push)
         for i in results:
             print i
 
@@ -345,9 +303,10 @@ def getPotentialPlatforms(builderInfo, branch):
         potBuildP.append('WINNT 5.2')
         potBuildP.append('Windows XP 32-bit')
     elif platformXRef[platform] == 'osx10.6' or \
+            platformXRef[platform] == 'osx10.7' or \
             platformXRef[platform] == 'osx10.8':
-        potBuildP.append('Rev4 MacOSX Lion 10.7')
         potBuildP.append('OS X 10.7')
+        potBuildP.append('Rev4 MacOSX Lion 10.7')
 
     return potBuildP
 
@@ -406,6 +365,10 @@ def constructBuildName(runArgs):
             platformXRef[runArgs['platform'][0]] == 'win7' or \
             platformXRef[runArgs['platform'][0]] == 'win8':
         platform = 'WINNT 5.2'
+    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.7' or \
+            platformXRef[runArgs['platform'][0]] == 'osx10.8':
+        platform = 'OS X 10.7'
     else:
         platform = platformXRef[runArgs['platform'][0]]
 
@@ -433,21 +396,6 @@ def constructBuildName(runArgs):
         ' ' + 'build'
 
 
-# For each thread, getRange gives start and end
-# index in the list of all revisions.  This divides up
-# the number of revisions each thread needs to get results
-# for, so they can each do equal work.
-def getRange(tid, len_revisions, nthreads):
-    chunk = len_revisions / nthreads
-    r = len_revisions % nthreads
-    if (tid < r):
-        start = (chunk + 1) * tid
-        end = start + chunk
-    else:
-        start = (chunk + 1) * r + chunk * (tid - r)
-        end = start + chunk - 1
-    return start, end
-
 def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     if runArgs['revision'] not in allPushes:
         print 'Revision not found in the current range.'
@@ -458,20 +406,10 @@ def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     unBuiltRevList = []
     revPos = allPushes.index(runArgs['revision'])
 
-    pushesToAnalyze = allPushes[revPos+1:revPos+revLimit+1]
-    # Spawn the number of threads input as argument into titanic.  getRange will
-    # divide up the revisions for each thread to handle.  For those revisions,
-    # each thread will getCSetResults and put the results into the queue.
-    for t in range(args.threads):
-        start, end = getRange(t, len(pushesToAnalyze), args.threads)
-        thread = threading.Thread(target=queueCSetResults,args=(runArgs['branch'],
-                                  runArgs['platform'], runArgs['tests'], runArgs['buildType'],
-                                  pushesToAnalyze[start:end+1]))
-        thread.daemon = True
-        thread.start()
-    # For each push to be analyzed, get it from the queue.
-    for push in pushesToAnalyze:
-        pushResults = queue.get()
+    for push in allPushes[revPos+1:]:
+        pushResults = getCSetResults(
+            runArgs['branch'], runArgs['platform'],
+            runArgs['tests'], runArgs['buildType'], push)
 
         if (len(pushResults) > 0):
             revLastPos = allPushes.index(push)
@@ -592,8 +530,6 @@ def setupArgsParser():
                         help='Revision for which to start bisection with!')
     parser.add_argument('--bn', action='store', dest='buildername', default='',
                         help='Buildername for which to run analysis.')
-    parser.add_argument('--threads', action='store', dest='threads', default=1,
-                        type=int, help='Number of threads to use.')
     return parser.parse_args()
 
 

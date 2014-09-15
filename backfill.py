@@ -59,7 +59,7 @@ def updateStatus(job, status):
     return job
 
 def processJob(job):
-   if job['status'] == 'new':
+    if job['status'] == 'new': 
         print 'New Job...'
         job,retVal = updateJob(job)
         job = updateStatus(job, retVal)
