@@ -628,6 +628,7 @@ def getBuildInfo(branch, buildername, revision):
     version = getVersionInfo(ftp)
 
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
+            platformXRef[runArgs['platform'][0]] == 'win8' or \
             platformXRef[runArgs['platform'][0]] == 'win7':
         extension = 'zip'
         platform = 'win32'
