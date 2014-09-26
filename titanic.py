@@ -129,8 +129,7 @@ def getPushLog(branch, startDate):
     pushAll = []
     entries = []
 
-    pushLogJSON = request.text 
-    pushLog = json.loads(pushLogJSON)
+    pushLog = request.json()
 
     # For whatever reason the JSON Loads disturbs the ordering of the entries.
     # The ordering of the entries is crucial since we consider it to be the
@@ -200,10 +199,8 @@ def downloadCSetResults(branch, rev):
 
     request = requests.get('https://tbpl.mozilla.org' + csetURL)
 
-    csetData = request.text
-
     try:
-        ret = json.loads(csetData)
+        ret = request.json()
     except:
         print "Error loading results in JSON Format"
         ret = {}
