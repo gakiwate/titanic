@@ -1,6 +1,5 @@
 import os
 import json
-import httplib
 import re
 import urllib
 import argparse
@@ -122,19 +121,15 @@ def getPushLog(branch, startDate):
     # Get PushLog for 2014-06-16
     # https://hg.mozilla.org/integration/mozilla-inbound/json-pushes?startdate=2014-06-18
 
-    conn = httplib.HTTPSConnection('hg.mozilla.org')
     pushLogURL = "/%s/json-pushes?startdate=%s" % (
         branchPaths[branch], startDate)
 
-    conn.request("GET", pushLogURL)
-    pushLogResponse = conn.getresponse()
+    request = requests.get('https://hg.mozilla.org' + pushLogURL)
 
     pushAll = []
     entries = []
 
-    pushLogJSON = pushLogResponse.read()
-    pushLogResponse.close()
-    pushLog = json.loads(pushLogJSON)
+    pushLog = request.json()
 
     # For whatever reason the JSON Loads disturbs the ordering of the entries.
     # The ordering of the entries is crucial since we consider it to be the
@@ -199,17 +194,13 @@ def downloadCSetResults(branch, rev):
     # Get Results for CSet Revision: 3b75b48cbaca
     # https://tbpl.mozilla.org/php/getRevisionBuilds.php?branch=mozilla-inbound&rev=3b75b48cbaca
 
-    conn = httplib.HTTPSConnection('tbpl.mozilla.org')
     csetURL = "/php/getRevisionBuilds.php?branch=%s&rev=%s&showall=1" % (
         branch, rev)
-    conn.request("GET", csetURL)
-    csetResponse = conn.getresponse()
 
-    csetData = csetResponse.read()
-    csetResponse.close()
+    request = requests.get('https://tbpl.mozilla.org' + csetURL)
 
     try:
-        ret = json.loads(csetData)
+        ret = request.json()
     except:
         print "Error loading results in JSON Format"
         ret = {}
