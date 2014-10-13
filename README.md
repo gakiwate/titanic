@@ -12,11 +12,12 @@ After being given this data, titanic will trudge through the revisions and find 
 
 # Installation
 
-To run ''Titanic'' you'll need to install the Python 'requests' package
+To run ''Titanic'' you'll need to install the Python 'requests' and 'BeautifulSoup4' packages
 
 You can do this by running the following command after you have installed 'pip'
 
     pip install requests
+    pip install BeautifulSoup4
 
 ## Setting Up
 

@@ -5,18 +5,18 @@ import urllib
 import argparse
 import sys
 import datetime
-import glob
 import re
 import bisect
 import requests
+from bs4 import BeautifulSoup, SoupStrainer
 
 #
 # The following strings are used to
 # read version infromation from the build directory
 #
-VERSION_GLOB = '*-*.*'
+VERSION_GLOB = '.*\-.*\..*'
 VERSION_RE = "(?<=-)[0-9]+\.\w*"
-DEFAULT_VERSION = "35.0a1"
+DEFAULT_VERSION = "36.0a1"
 
 branchPaths = {
     'mozilla-aurora': 'releases/mozilla-aurora',
@@ -576,7 +576,10 @@ def isBuildSuccessful(branch, buildername, revision):
 
 def findBuildLocation(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
+    print runArgs
     status, result = findBuildStatus(revision, runArgs, 'success')
+    print status
+    print result
     if not status:
         print 'Please make sure that there is a build for revision: ' + revision
         ## FIXME: Needs to return a proper error
@@ -584,8 +587,20 @@ def findBuildLocation(branch, buildername, revision):
 
     return result[5]
 
+def getFileList(buildLocation):
+    r = requests.get(buildLocation)
+    soup = BeautifulSoup(r.text)
+
+    retVal = []
+    for link in soup.find_all('a'):
+        if link.has_attr('href'):
+            retVal.append(link['href'])
+
+    return retVal 
+
 def getVersionInfo(buildLocation):
-    files = glob.glob('%s/%s' % (buildLocation, VERSION_GLOB))
+    files = getFileList(buildLocation)
+    files = [f for f in files if re.search(VERSION_GLOB, f)]
 
     if not files:
       ## if no files are found to extract version number
@@ -608,7 +623,6 @@ def getBuildInfo(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
     version = getVersionInfo(ftp)
-
     version = getVersionInfo(ftp)
 
     if platformXRef[runArgs['platform'][0]] == 'winxp' or \
