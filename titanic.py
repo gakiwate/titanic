@@ -8,7 +8,11 @@ import datetime
 import re
 import bisect
 import requests
+import logging
 from bs4 import BeautifulSoup, SoupStrainer
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 #
 # The following strings are used to
@@ -202,7 +206,7 @@ def downloadCSetResults(branch, rev):
     try:
         ret = request.json()
     except:
-        print "Error loading results in JSON Format"
+        logger.error("Error loading results in JSON Format")
         ret = {}
     return ret
 
@@ -273,12 +277,12 @@ def getCSetResults(branch, getPlatforms, getTests, getBuildType, rev):
 
 def runTitanicNormal(runArgs, allPushes):
     for push in allPushes:
-        print 'Getting Results for %s' % (push)
+        logger.info('Getting Results for {!s}'.format(push))
         results = getCSetResults(
             runArgs['branch'], runArgs['platform'],
             runArgs['tests'], runArgs['buildType'], push)
         for i in results:
-            print i
+            logger.info('{!s}'.format(i))
 
 
 def getPotentialPlatforms(builderInfo, branch):
@@ -387,8 +391,8 @@ def constructBuildName(runArgs):
 
 def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     if runArgs['revision'] not in allPushes:
-        print 'Revision not found in the current range.'
-        print 'Consider increasing range!'
+        logger.error('Revision not found in the current range. '
+                     'Consider increasing range!')
         # FIXME: Need to return an error
         return '',''
 
@@ -407,8 +411,8 @@ def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
         if not findBuildStatus(push, runArgs, 'success')[0]:
             unBuiltRevList.append(push)
 
-    print 'Revision that successfully passed ' + str(runArgs['tests']) + \
-        ' not found in the current range. Consider increasing range!'
+    logger.error('Revision that successfully passed not found in the current range. '
+                 'Consider increasing range!'.format(runArgs['tests']))
     # FIXME: Need to return an error
     return '',''
 
@@ -418,7 +422,7 @@ def printCommands(revList, unBuiltRevList, runArgs):
         print getBuildCommands(runArgs['branch'], runArgs['buildername'], rev)
 
     if unBuiltRevList != []:
-        print 'Trigger Builds. Wait for all builds to complete before proceeding...'
+        logger.warning('Trigger Builds. Wait for all builds to complete before proceeding...')
         return
 
     for rev in revList:
@@ -442,11 +446,11 @@ def runTitanic(runArgs):
 
 def populateArgs(branch, buildername, revision, delta):
     if buildername == '':
-        print 'You need to specify the buildername!'
+        logger.error('You need to specify the buildername!')
         sys.exit(1)
     if branch not in buildername:
-        print 'Please specify the branch you are interested in.'
-        print 'Branch defaults to \'mozilla-central\''
+        logger.error("Please specify the branch you are interested in. "
+                     "Branch defaults to 'mozilla-central'")
         sys.exit(1)
 
     runArgs = {
@@ -470,14 +474,14 @@ def populateArgs(branch, buildername, revision, delta):
 
 def verifyArgs(args):
     if args.branch not in branchPaths:
-        print 'error: unknown branch: %s' % (args.branch)
+        logger.error('unknown branch: {!s}'.format(args.branch))
         sys.exit(1)
 
     flag = True
     for p in args.platform:
         flag = flag and getMatch(p, platforms)
         if flag is False:
-            print 'error: unknown platform: %s' % (p)
+            logger.error('unknown platform: {!s}'.format(p))
             sys.exit(1)
 
     runArgs = {
@@ -528,7 +532,7 @@ def taskStatus(branch, buildername, revision, statusType, auth = None):
     r = requests.get(url)
 
     if 400 <= int(r.status_code) < 500:
-        print 'The task could not be triggered.'
+        logger.error('The task could not be triggered.')
         return False
 
     try:
@@ -576,12 +580,12 @@ def isBuildSuccessful(branch, buildername, revision):
 
 def findBuildLocation(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
-    print runArgs
+    logger.info('{!s}'.format(runArgs))
     status, result = findBuildStatus(revision, runArgs, 'success')
-    print status
-    print result
+    logger.info('{!s}'.format(status))
+    logger.info('{!s}'.format(result))
     if not status:
-        print 'Please make sure that there is a build for revision: ' + revision
+        logger.error('Please make sure that there is a build for revision: {}'.format(revision))
         ## FIXME: Needs to return a proper error
         return ''
 
@@ -743,11 +747,12 @@ def triggerTask(branch, buildername, revision, payload, auth = None):
         branch, buildername, revision)
     r = requests.post(url, data=payload, auth=auth)
     if 400 <= int(r.status_code) < 500:
-        print 'The task could not be triggered.'
+        logger.error('The task could not be triggered.')
         return r.status_code
 
-    print 'Your return code is: %s' % r.status_code
-    print 'https://secure.pub.build.mozilla.org/buildapi/revision/%s/%s' % (branch, revision)
+
+    logger.info('Your return code is: {!s}'.format(r.status_code))
+    logger.info('https://secure.pub.build.mozilla.org/buildapi/revision/{!s}/{!s}'.format(branch, revision))
     return r.status_code
 
 # API: rangeFill
@@ -780,13 +785,13 @@ def rangeFill(branch, buildername, startRev, endRev, delta=30):
     revPos_end = allPushes.index(startRev)
 
     if revPos_start > revPos_end:
-        print "warning: startRev is more recent than endRev (did you reverse them?)"
+        logger.warning('warning: startRev is more recent than endRev (did you reverse them?)')
         return [], []
 
     pushesToAnalyze = allPushes[revPos_start:revPos_end+1]
     runArgs = {'buildername': buildername, "branch": branch}
     for push in pushesToAnalyze:
-        print "analyzing", push
+        logger.info('analyzing {!s}'.format(push))
         if not findBuildStatus(push, runArgs, 'success')[0]:
             unBuiltRevList.append(push)
 
