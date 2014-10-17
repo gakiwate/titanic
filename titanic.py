@@ -1,15 +1,12 @@
-import os
 import json
 import re
-import urllib
 import argparse
 import sys
 import datetime
-import re
 import bisect
 import requests
 import logging
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,15 +29,13 @@ branchPaths = {
 }
 
 platforms = ['linux32', 'linux64', 'osx10.6', 'osx10.7',
-             'osx10.8', 'winxp', 'win7', 'win764', 'win8']
+             'osx10.8', 'winxp', 'win7', 'win8', 'win864']
 
 platformXRef = {
     'Linux': 'linux32',
     'Ubuntu HW 12.04': 'linux32',
     'Ubuntu VM 12.04': 'linux32',
-    'Rev3 Fedora 12': 'linux32',
     'Linux x86-64': 'linux64',
-    'Rev3 Fedora 12x64': 'linux64',
     'Ubuntu VM 12.04 x64': 'linux64',
     'Ubuntu HW 12.04 x64': 'linux64',
     'Ubuntu ASAN VM 12.04 x64': 'linux64',
@@ -51,9 +46,9 @@ platformXRef = {
     'WINNT 5.2': 'winxp',
     'Windows XP 32-bit': 'winxp',
     'Windows 7 32-bit': 'win7',
-    'Windows 7 64-bit': 'win764',
-    'WINNT 6.1 x86-64': 'win764',
     'WINNT 6.2': 'win8',
+    'WINNT 6.1 x86-64': 'win864',
+    'win8_64': 'win864',
     'Android Armv6': 'android-armv6',
     'Android 2.2 Armv6': 'android-armv6',
     'Android Armv6 Tegra 250': 'android-armv6',
@@ -234,9 +229,9 @@ def getCSetResultsBuild(branch, getPlatforms, getTests, getBuildType, rev):
         if entry['notes']:
             notes = entry['notes'][0]['note'].replace("'", '')
 
-        if getMatch(testType, getTests) and getMatch(
-            platform, getPlatforms) and getMatch(
-                buildType, getBuildType):
+        if getMatch(testType, getTests) and \
+           getMatch(platform, getPlatforms) and \
+           getMatch(buildType, getBuildType):
 
             buildLoc = getBuildLoc(entry['log'])
             csetResults.append([
@@ -292,12 +287,12 @@ def getPotentialPlatforms(builderInfo, branch):
 
     # For Windows and OSX the builds are all done on one platform and then
     # the tests are run on the actual desired platform.
-    if platformXRef[platform] == 'win7' or platformXRef[platform] == 'win8':
+    if basePlatform in ('win7', 'win8'):
         potBuildP.append('WINNT 5.2')
         potBuildP.append('Windows XP 32-bit')
-    elif platformXRef[platform] == 'osx10.6' or \
-            platformXRef[platform] == 'osx10.7' or \
-            platformXRef[platform] == 'osx10.8':
+    elif basePlatform == 'win864':
+        potBuildP.append('WINNT 6.1 x64')
+    elif basePlatform in ('osx10.6', 'osx10.7', 'osx10.8'):
         potBuildP.append('OS X 10.7')
         potBuildP.append('Rev4 MacOSX Lion 10.7')
 
@@ -600,7 +595,7 @@ def getFileList(buildLocation):
         if link.has_attr('href'):
             retVal.append(link['href'])
 
-    return retVal 
+    return retVal
 
 def getVersionInfo(buildLocation):
     files = getFileList(buildLocation)
@@ -628,23 +623,23 @@ def getBuildInfo(branch, buildername, revision):
     ftp = findBuildLocation(branch, buildername, revision)
     version = getVersionInfo(ftp)
     version = getVersionInfo(ftp)
+    basePlatform = platformXRef[runArgs['platform'][0]]
 
-    if platformXRef[runArgs['platform'][0]] == 'winxp' or \
-            platformXRef[runArgs['platform'][0]] == 'win8' or \
-            platformXRef[runArgs['platform'][0]] == 'win7':
+    if basePlatform in ('winxp', 'win7', 'win8'):
         extension = 'zip'
         platform = 'win32'
-    elif platformXRef[runArgs['platform'][0]] == 'osx10.6' or \
-            platformXRef[runArgs['platform'][0]] == 'osx10.7' or \
-            platformXRef[runArgs['platform'][0]] == 'osx10.8':
+    elif basePlatform in ('win864'):
+        extension = 'zip'
+        platform = 'win64-x86_64'
+    elif basePlatform in ('osx10.6', 'osx10.7', 'osx10.8'):
         extension = 'dmg'
         platform = 'mac'
         if runArgs['buildType'] == 'debug':
             platform = 'mac64'
-    elif platformXRef[runArgs['platform'][0]] == 'linux64':
+    elif basePlatform == 'linux64':
         extension = 'tar.bz2'
         platform = 'linux-x86_64'
-    elif platformXRef[runArgs['platform'][0]] == 'linux32':
+    elif basePlatform == 'linux32':
         extension = 'tar.bz2'
         platform = 'linux-i686'
 
