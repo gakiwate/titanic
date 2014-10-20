@@ -48,7 +48,7 @@ platformXRef = {
     'Windows 7 32-bit': 'win7',
     'WINNT 6.2': 'win8',
     'WINNT 6.1 x86-64': 'win864',
-    'win8_64': 'win864',
+    'Windows 8 64-bit': 'win864',
     'Android Armv6': 'android-armv6',
     'Android 2.2 Armv6': 'android-armv6',
     'Android Armv6 Tegra 250': 'android-armv6',
