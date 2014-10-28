@@ -7,6 +7,13 @@ import bisect
 import requests
 import logging
 from bs4 import BeautifulSoup
+from errors import (
+    TitanicException,
+    TitanicConnectionException,
+    TitanicInvalidArgumentException,
+    TitanicBuildnameException,
+    TitanicRevisionException,
+    TitanicBuildException)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,15 +127,19 @@ def getPushLog(branch, startDate):
     # Get PushLog for 2014-06-16
     # https://hg.mozilla.org/integration/mozilla-inbound/json-pushes?startdate=2014-06-18
 
-    pushLogURL = "/%s/json-pushes?startdate=%s" % (
-        branchPaths[branch], startDate)
+    try:
+        pushLogURL = "/%s/json-pushes?startdate=%s" % (
+            branchPaths[branch], startDate)
 
-    request = requests.get('https://hg.mozilla.org' + pushLogURL)
+        request = requests.get('https://hg.mozilla.org' + pushLogURL)
 
-    pushAll = []
-    entries = []
+        pushAll = []
+        entries = []
 
-    pushLog = request.json()
+        pushLog = request.json()
+
+    except Exception as e:
+        raise TitanicConnectionException(str(e))
 
     # For whatever reason the JSON Loads disturbs the ordering of the entries.
     # The ordering of the entries is crucial since we consider it to be the
@@ -196,13 +207,13 @@ def downloadCSetResults(branch, rev):
     csetURL = "/php/getRevisionBuilds.php?branch=%s&rev=%s&showall=1" % (
         branch, rev)
 
-    request = requests.get('https://tbpl.mozilla.org' + csetURL)
-
     try:
+        request = requests.get('https://tbpl.mozilla.org' + csetURL)
         ret = request.json()
     except:
         logger.error("Error loading results in JSON Format")
-        ret = {}
+        raise TitanicConnectionException("Error retrieving CS result")
+
     return ret
 
 
@@ -388,9 +399,7 @@ def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
     if runArgs['revision'] not in allPushes:
         logger.error('Revision not found in the current range. '
                      'Consider increasing range!')
-        # FIXME: Need to return an error
-        return '',''
-
+        raise TitanicRevisionException('Revision not found in given range')
     unBuiltRevList = []
     revPos = allPushes.index(runArgs['revision'])
 
@@ -408,9 +417,7 @@ def runTitanicAnalysis(runArgs, allPushes,revLimit = 10):
 
     logger.error('Revision that successfully passed not found in the current range. '
                  'Consider increasing range!'.format(runArgs['tests']))
-    # FIXME: Need to return an error
-    return '',''
-
+    raise TitanicRevisionException('Revision not found in given range')
 
 def printCommands(revList, unBuiltRevList, runArgs):
     for rev in unBuiltRevList:
@@ -442,11 +449,11 @@ def runTitanic(runArgs):
 def populateArgs(branch, buildername, revision, delta):
     if buildername == '':
         logger.error('You need to specify the buildername!')
-        sys.exit(1)
+        raise TitanicBuildnameException("Buildname not specified")
     if branch not in buildername:
         logger.error("Please specify the branch you are interested in. "
                      "Branch defaults to 'mozilla-central'")
-        sys.exit(1)
+        raise TitanicBuildnameException("Branch not specified")
 
     runArgs = {
         'branch': branch,
@@ -581,8 +588,7 @@ def findBuildLocation(branch, buildername, revision):
     logger.info('{!s}'.format(result))
     if not status:
         logger.error('Please make sure that there is a build for revision: {}'.format(revision))
-        ## FIXME: Needs to return a proper error
-        return ''
+        raise TitanicBuildException("No build for revision {}".format(revision))
 
     return result[5]
 
@@ -621,7 +627,6 @@ def getVersionInfo(buildLocation):
 def getBuildInfo(branch, buildername, revision):
     runArgs = populateArgs(branch, buildername, revision, 1)
     ftp = findBuildLocation(branch, buildername, revision)
-    version = getVersionInfo(ftp)
     version = getVersionInfo(ftp)
     basePlatform = platformXRef[runArgs['platform'][0]]
 
