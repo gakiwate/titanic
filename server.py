@@ -123,6 +123,11 @@ def new_request():
 def get_jobs():
     return {'jobs': run_query("where status!='done'")}
 
+@app.route('/completed_jobs')
+@json_response
+def get_completed_jobs():
+    return {'jobs': run_query("where status=='done'")}
+
 @app.route("/update_status", methods=['POST'])
 @json_response
 def run_updatestatus_data():
