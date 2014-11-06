@@ -1,0 +1,63 @@
+From 71ae9e7449da2844ae801005a30f0b90a69c55d4 Mon Sep 17 00:00:00 2001
+From: "harshjha2006@gmail.com" <harshjha2006@gmail.com>
+Date: Wed, 29 Oct 2014 15:41:46 -0500
+Subject: [PATCH] Adding bugfix for 1060665
+
+---
+ server.py        |  5 +++++
+ static/jobs.html | 17 +++++++++++++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/server.py b/server.py
+index e7e8360..69e48c0 100644
+--- a/server.py
++++ b/server.py
+@@ -123,6 +123,11 @@ def new_request():
+ def get_jobs():
+     return {'jobs': run_query("where status!='done'")}
+ 
++@app.route('/completed_jobs')
++@json_response
++def get_completed_jobs():
++    return {'jobs': run_query("where status=='done'")}
++
+ @app.route("/update_status", methods=['POST'])
+ @json_response
+ def run_updatestatus_data():
+diff --git a/static/jobs.html b/static/jobs.html
+index 6e5b505..910eb47 100644
+--- a/static/jobs.html
++++ b/static/jobs.html
+@@ -23,6 +23,22 @@
+     $('#jobtable').html(jobtable);
+   });
+ </script>
++<script>
++  var root_url = window.location.protocol + '//' + window.location.host;
++  $.getJSON(root_url + "/completed_jobs", function (data) {
++    var completedjobtable = "<table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
++    var job;
++    for (var j in data['jobs']) {
++        job = data['jobs'][j];
++        completedjobtable += "<tr><td>" + job.branch + "</td>";
++        completedjobtable += "<td>" + job.revision + "</td>";
++        completedjobtable += "<td>" + job.buildername + "</td>";
++        completedjobtable += "<td>" + job.status + "</td></tr>";
++    }
++    completedjobtable += "</table>";
++    $('#completedjobtable').html(completedjobtable);
++  });
++</script>
+ <div id="addnew">
+ <form method="post" action="/new_request">
+ Submit a new backfill job<br />
+@@ -47,5 +63,6 @@ Submit a new backfill job<br />
+ </div>
+ <div id="info"></div>
+ <div id="jobtable"></div>
++<div id="completedjobtable"></div>
+ </body>
+ </html>
+-- 
+2.1.0
+

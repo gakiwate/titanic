@@ -10,7 +10,7 @@
 <script>
   var root_url = window.location.protocol + '//' + window.location.host;
   $.getJSON(root_url + "/active_jobs", function (data) {
-    var jobtable = "<table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
+    var jobtable = "<h3>Jobs in Progress</h3><table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
     var job;
     for (var j in data['jobs']) {
         job = data['jobs'][j];
@@ -26,7 +26,7 @@
 <script>
   var root_url = window.location.protocol + '//' + window.location.host;
   $.getJSON(root_url + "/completed_jobs", function (data) {
-    var completedjobtable = "<table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
+    var completedjobtable = "<h3>Completed Jobs</h3><table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
     var job;
     for (var j in data['jobs']) {
         job = data['jobs'][j];
