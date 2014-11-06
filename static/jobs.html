@@ -10,7 +10,7 @@
 <script>
   var root_url = window.location.protocol + '//' + window.location.host;
   $.getJSON(root_url + "/active_jobs", function (data) {
-    var jobtable = "<table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
+    var jobtable = "<h3>Jobs in Progress</h3><table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
     var job;
     for (var j in data['jobs']) {
         job = data['jobs'][j];
@@ -21,6 +21,22 @@
     }
     jobtable += "</table>";
     $('#jobtable').html(jobtable);
+  });
+</script>
+<script>
+  var root_url = window.location.protocol + '//' + window.location.host;
+  $.getJSON(root_url + "/completed_jobs", function (data) {
+    var completedjobtable = "<h3>Completed Jobs</h3><table><tr><th>branch</th><th>revision</th><th>buildername</th><th>status</th></tr>";
+    var job;
+    for (var j in data['jobs']) {
+        job = data['jobs'][j];
+        completedjobtable += "<tr><td>" + job.branch + "</td>";
+        completedjobtable += "<td>" + job.revision + "</td>";
+        completedjobtable += "<td>" + job.buildername + "</td>";
+        completedjobtable += "<td>" + job.status + "</td></tr>";
+    }
+    completedjobtable += "</table>";
+    $('#completedjobtable').html(completedjobtable);
   });
 </script>
 <div id="addnew">
@@ -47,5 +63,6 @@ Submit a new backfill job<br />
 </div>
 <div id="info"></div>
 <div id="jobtable"></div>
+<div id="completedjobtable"></div>
 </body>
 </html>
